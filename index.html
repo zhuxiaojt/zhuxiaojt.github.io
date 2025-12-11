@@ -23,17 +23,18 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-15px); }
         }
-        .error-icon {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-            fill: #6c63ff;
+        .loading-subtext {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 500px;
         }
     </style>
   </head>
   <body>
-    <svg class="error-icon" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path>
-    </svg>
+    <div class="loading-subtext">
+      加载中，请稍后...
+    </div>
   </body>
 </html>
