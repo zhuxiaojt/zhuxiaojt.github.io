@@ -42,41 +42,6 @@
             text-align: center;
             max-width: 500px;
         }
-        .btn-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        .btn-primary {
-            background: #6c63ff;
-            color: white;
-            border: none;
-        }
-        .btn-primary:hover {
-            background: #574fff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
-        }
-        .btn-secondary {
-            background: white;
-            color: #6c63ff;
-            border: 1px solid #6c63ff;
-        }
-        .btn-secondary:hover {
-            background: #f8f7ff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(108, 99, 255, 0.1);
-        }
         .error-icon {
             width: 80px;
             height: 80px;
@@ -93,10 +58,6 @@
             .error-subtext {
                 font-size: 14px;
             }
-            .btn {
-                padding: 10px 20px;
-                font-size: 14px;
-            }
         }
     </style>
   </head>
@@ -109,11 +70,6 @@
     <div class="error-subtext">
       你访问的页面不存在、已被删除，或网址输入错误。<br>
       建议检查网址拼写，或返回首页重新导航。
-    </div>
-    <!-- 操作按钮 -->
-    <div class="btn-group">
-      <a href="/" class="btn btn-primary">返回首页</a>
-      <button onclick="history.back()" class="btn btn-secondary">返回上一页</button>
     </div>
   </body>
 </html>
