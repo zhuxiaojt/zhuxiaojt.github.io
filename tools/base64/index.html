@@ -224,7 +224,7 @@
         <h2 style="color: #6c63ff; font-size: 18px; margin-bottom: 15px; font-weight: 600;">Base64 编解码</h2>
         <div class="input-wrap">
           <label>输入内容：</label>
-          <textarea id="inputText" placeholder="请输入需要编码/解码的文本，或上传文件"></textarea>
+          <textarea id="inputText" placeholder="请输入需要编码/解码的文本"></textarea>
         </div>
         <label for="fileInput" class="file-upload">
           或者上传文件
@@ -289,9 +289,8 @@
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
               showToast('检测到dataURL，已自动下载文件！', 'success');
-              document.getElementById('outputText').value = '已识别dataURL并完成文件下载，以上是原始dataURL内容：\n' + input;
+              document.getElementById('outputText').value = '已识别dataURL并完成文件下载，以下是原始dataURL内容：\n' + input;
             } else {
-              // 不是dataURL，解码为文本
               const binary = atob(input);
               const bytes = new Uint8Array(binary.length);
               for (let i = 0; i < binary.length; i++) {
@@ -347,13 +346,13 @@
           const output = document.getElementById('outputText');
           const text = output.value.trim();
           if (!text) {
-            showToast('暂无可复制的内容！', 'warning');
+            showToast('暂无可复制的内容', 'warning');
             return;
           }
     
           try {
             await navigator.clipboard.writeText(text);
-            showToast('复制成功！', 'success');
+            showToast('复制成功', 'success');
           } catch (err) {
             const selection = window.getSelection();
             const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
@@ -367,7 +366,7 @@
               selection.addRange(range);
             }
             
-            showToast('复制成功（降级方案）！', 'success');
+            showToast('复制成功', 'success');
           }
         }
     
@@ -378,7 +377,7 @@
           const reader = new FileReader();
           reader.onload = function(e) {
             document.getElementById('outputText').value = e.target.result;
-            showToast('文件已转换为dataURL，显示在输出框中！', 'success');
+            showToast('文件转换成功，输出框内容为dataURL，输入框内容为原始Base64编码，请自行使用', 'success');
           };
           reader.readAsDataURL(file);
         });
