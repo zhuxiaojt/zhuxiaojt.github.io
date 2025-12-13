@@ -239,8 +239,8 @@
         padding: 2px 6px;
         background: #f5f5f5;
         border-radius: 4px;
-        font-family: Consolas, Monaco, 'Courier New', monospace;
-        font-size: 13px;
+        font-family: Consolas, Monaco, 'Courier New', monospace !important;
+        font-size: 13px !important;
       }
       .markdown-preview pre {
         padding: 16px;
@@ -248,14 +248,21 @@
         border-radius: 8px;
         overflow-x: auto;
         margin: 12px 0;
-        font-family: Consolas, Monaco, 'Courier New', monospace;
-        font-size: 13px;
+        font-family: Consolas, Monaco, 'Courier New', monospace !important;
+        font-size: 13px !important;
       }
       .markdown-preview pre code {
         padding: 0;
         background: transparent;
-        font-family: Consolas, Monaco, 'Courier New', monospace;
-        font-size: 13px;
+        font-family: Consolas, Monaco, 'Courier New', monospace !important;
+        font-size: 13px !important;
+      }
+      .markdown-preview .hljs,
+      .markdown-preview [class^="hljs-"],
+      .markdown-preview [class*=" hljs-"]
+        font-family: Consolas, Monaco, 'Courier New', monospace !important;
+        font-size: 14px !important;
+        line-height: 1.6 !important;
       }
       .markdown-preview blockquote {
         border-left: 4px solid #6c63ff;
@@ -349,7 +356,7 @@
     
       <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
       <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+      <link rel="stylesheet" href="/tools/mdedit/hljsStyle.css">
     
       <script>
         const markdownInput = document.getElementById('markdownInput');
