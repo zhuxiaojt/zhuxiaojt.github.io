@@ -105,6 +105,110 @@
         background: #6c63ff;
         color: white;
       }
+      .appmain {
+        width: 100%;
+        max-width: 800px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        margin: 0 auto;
+      }
+      .base64-tool {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .input-wrap, .output-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .base64-tool label {
+        color: #555;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .base64-tool textarea {
+        width: 100%;
+        height: 180px;
+        padding: 12px 15px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        resize: vertical;
+        font-size: 14px;
+        line-height: 1.5;
+        background: rgba(255, 255, 255, 0.9);
+        transition: border-color 0.2s;
+      }
+      .base64-tool textarea:focus {
+        outline: none;
+        border-color: #6c63ff;
+      }
+      .btn-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 10px 0;
+      }
+      .base64-tool button {
+        padding: 10px 20px;
+        background: #6c63ff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.2s;
+      }
+      .base64-tool button:hover {
+        background: #5a54e0;
+      }
+      .base64-tool button.secondary {
+        background: rgba(255, 255, 255, 0.8);
+        color: #666;
+        border: 1px solid #e0e0e0;
+      }
+      .base64-tool button.secondary:hover {
+        background: rgba(255, 255, 255, 1);
+        border-color: #d0d0d0;
+      }
+      .file-upload {
+        padding: 20px;
+        border: 1px dashed #e0e0e0;
+        border-radius: 8px;
+        text-align: center;
+        color: #888;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin: 10px 0;
+      }
+      .file-upload:hover {
+        border-color: #6c63ff;
+        color: #6c63ff;
+      }
+      #fileInput {
+        display: none;
+      }
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
@@ -115,6 +219,113 @@
         <a href="/tools/base64" class="active">base64编解码</a>
       </div>
     </nav>
-  
+    <div class="appmain">
+      <div class="base64-tool">
+        <h2 style="color: #6c63ff; font-size: 18px; margin-bottom: 15px; font-weight: 600;">Base64 编解码工具</h2>
+        <div class="input-wrap">
+          <label>输入内容（文本/文件自动转换）：</label>
+          <textarea id="inputText" placeholder="请输入需要编码/解码的文本，或上传文件自动转换..."></textarea>
+        </div>
+        
+        <label for="fileInput" class="file-upload">
+          <input type="file" id="fileInput" accept="*">
+        </label>
+        
+        <div class="btn-group">
+          <button onclick="base64Encode()">编码</button>
+          <button onclick="base64Decode()">解码</button>
+          <button class="secondary" onclick="swapText()">交换输入/输出</button>
+          <button class="secondary" onclick="clearAll()">清空内容</button>
+        </div>
+        
+        <div class="output-wrap">
+          <label>输出结果：</label>
+          <textarea id="outputText" readonly placeholder="编码/解码结果将显示在这里..."></textarea>
+          <button class="secondary" onclick="copyOutput()">复制结果</button>
+        </div>
+        
+        <div class="toast" id="toast">复制成功！</div>
+      </div>
+    
+      <script>
+        function base64Encode() {
+          const input = document.getElementById('inputText').value.trim();
+          if (!input) {
+            alert('请输入要编码的内容！');
+            return;
+          }
+          try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(input);
+            const base64 = btoa(String.fromCharCode(...data));
+            document.getElementById('outputText').value = base64;
+          } catch (e) {
+            alert('编码失败！请检查输入内容。');
+          }
+        }
+    
+        function base64Decode() {
+          const input = document.getElementById('inputText').value.trim();
+          if (!input) {
+            alert('请输入要解码的Base64字符串！');
+            return;
+          }
+          try {
+            const binary = atob(input);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+            const decoder = new TextDecoder();
+            const text = decoder.decode(bytes);
+            document.getElementById('outputText').value = text;
+          } catch (e) {
+            alert('解码失败！请检查Base64字符串是否正确。');
+          }
+        }
+    
+        function swapText() {
+          const input = document.getElementById('inputText');
+          const output = document.getElementById('outputText');
+          const temp = input.value;
+          input.value = output.value;
+          output.value = temp;
+        }
+    
+        function clearAll() {
+          document.getElementById('inputText').value = '';
+          document.getElementById('outputText').value = '';
+        }
+    
+        function copyOutput() {
+          const output = document.getElementById('outputText');
+          if (!output.value) {
+            alert('暂无可复制的内容！');
+            return;
+          }
+          output.select();
+          document.execCommand('copy');
+          
+          const toast = document.getElementById('toast');
+          toast.classList.add('show');
+          setTimeout(() => {
+            toast.classList.remove('show');
+          }, 1500);
+        }
+    
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = e.target.result.split(',')[1];
+            document.getElementById('inputText').value = base64;
+            document.getElementById('outputText').value = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        });
+      </script>
+    </div>
   </body>
 </html>
