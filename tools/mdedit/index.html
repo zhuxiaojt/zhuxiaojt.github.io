@@ -116,7 +116,23 @@
         box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
         margin: 0 auto;
       }
-      /* ========== Markdown编辑器专属样式 ========== */
+      .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 12px 24px;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+      }
+      .toast.show {
+        opacity: 1;
+      }
       .markdown-tool {
         width: 100%;
         display: flex;
@@ -129,7 +145,6 @@
         font-weight: 600;
         margin-bottom: 8px;
       }
-      /* 编辑器工具栏 */
       .markdown-toolbar {
         display: flex;
         gap: 12px;
@@ -158,7 +173,6 @@
         color: white;
         border-color: #6c63ff;
       }
-      /* 编辑/预览容器 */
       .markdown-container {
         display: flex;
         gap: 16px;
@@ -171,7 +185,6 @@
           height: auto;
         }
       }
-      /* 输入区 */
       .markdown-input, .markdown-preview {
         flex: 1;
         border-radius: 8px;
@@ -191,12 +204,10 @@
         background: transparent;
         outline: none;
       }
-      /* 预览区 */
       .markdown-preview {
         padding: 16px;
         overflow-y: auto;
       }
-      /* Markdown预览样式美化 */
       .markdown-preview h1 {
         font-size: 24px;
         color: #333;
