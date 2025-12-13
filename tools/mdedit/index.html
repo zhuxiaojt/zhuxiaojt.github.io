@@ -273,21 +273,6 @@
       .markdown-preview th {
         background: #f5f5f5;
       }
-      /* 全屏样式 */
-      .fullscreen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 9999;
-        background: white;
-        padding: 20px;
-      }
-      .fullscreen .markdown-container {
-        height: calc(100vh - 80px);
-      }
-      /* 加载提示 */
       .loading {
         display: flex;
         align-items: center;
@@ -311,17 +296,14 @@
       <div class="markdown-tool">
         <h2>Markdown 编辑器</h2>
         
-        <!-- 功能工具栏 -->
         <div class="markdown-toolbar">
           <button id="btnEdit" class="active">编辑模式</button>
           <button id="btnPreview">预览模式</button>
           <button id="btnSplit">分屏模式</button>
           <button id="btnCopyHtml">复制HTML</button>
           <button id="btnClear">清空内容</button>
-          <button id="btnFullscreen">全屏编辑</button>
         </div>
         
-        <!-- 编辑/预览容器 -->
         <div class="markdown-container" id="markdownContainer">
           <div class="markdown-input" id="markdownInputWrap">
             <textarea id="markdownInput" placeholder="请输入Markdown内容，支持所有标准语法：
@@ -344,20 +326,17 @@
     "></textarea>
           </div>
           
-          <!-- 预览区 -->
           <div class="markdown-preview" id="markdownPreview">
             <div class="loading">正在初始化预览器...</div>
           </div>
         </div>
       </div>
     
-      <!-- 引入Markdown解析和代码高亮CDN -->
       <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
       <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
     
       <script>
-        // 初始化变量
         const markdownInput = document.getElementById('markdownInput');
         const markdownPreview = document.getElementById('markdownPreview');
         const markdownContainer = document.getElementById('markdownContainer');
@@ -366,14 +345,10 @@
         const btnSplit = document.getElementById('btnSplit');
         const btnCopyHtml = document.getElementById('btnCopyHtml');
         const btnClear = document.getElementById('btnClear');
-        const btnFullscreen = document.getElementById('btnFullscreen');
         const markdownInputWrap = document.getElementById('markdownInputWrap');
         
-        // 全局状态
-        let isFullscreen = false;
-        let currentMode = 'split'; // edit/preview/split
+        let currentMode = 'split'; 
         
-        // 初始化marked（配置代码高亮）
         marked.setOptions({
           highlight: function(code, lang) {
             if (lang && hljs.getLanguage(lang)) {
@@ -381,27 +356,23 @@
             }
             return hljs.highlightAuto(code).value;
           },
-          breaks: true, // 换行转换为<br>
-          gfm: true // 支持GitHub风格的Markdown
+          breaks: true,
+          gfm: true
         });
     
-        // 实时渲染Markdown
         function renderMarkdown() {
           const content = markdownInput.value.trim() || '# Markdown 编辑器\n\n请输入内容开始编辑...';
           const html = marked.parse(content);
           markdownPreview.innerHTML = html;
           
-          // 重新高亮代码块（防止动态渲染失效）
           document.querySelectorAll('.markdown-preview pre code').forEach((block) => {
             hljs.highlightElement(block);
           });
         }
     
-        // 切换显示模式
         function switchMode(mode) {
           currentMode = mode;
           
-          // 重置按钮状态
           [btnEdit, btnPreview, btnSplit].forEach(btn => {
             btn.classList.remove('active');
           });
@@ -424,11 +395,9 @@
               break;
           }
           
-          // 重新渲染
           renderMarkdown();
         }
     
-        // 复制HTML内容
         async function copyHtmlContent() {
           const html = markdownPreview.innerHTML.trim();
           if (!html) {
@@ -440,7 +409,6 @@
             await navigator.clipboard.writeText(html);
             showToast('HTML内容复制成功！', 'success');
           } catch (err) {
-            // 降级方案
             const textArea = document.createElement('textarea');
             textArea.value = html;
             document.body.appendChild(textArea);
@@ -451,7 +419,6 @@
           }
         }
     
-        // 清空内容
         function clearContent() {
           if (confirm('确定要清空所有内容吗？')) {
             markdownInput.value = '';
@@ -460,26 +427,9 @@
           }
         }
     
-        // 全屏切换
-        function toggleFullscreen() {
-          isFullscreen = !isFullscreen;
-          
-          if (isFullscreen) {
-            markdownContainer.parentNode.classList.add('fullscreen');
-            btnFullscreen.textContent = '退出全屏';
-            showToast('已进入全屏模式！', 'success');
-          } else {
-            markdownContainer.parentNode.classList.remove('fullscreen');
-            btnFullscreen.textContent = '全屏编辑';
-            showToast('已退出全屏模式！', 'success');
-          }
-        }
-    
-        // 提示函数（复用之前的Toast样式）
         function showToast(message, type = 'success') {
           let toast = document.getElementById('toast');
           if (!toast) {
-            // 动态创建Toast
             toast = document.createElement('div');
             toast.id = 'toast';
             toast.className = 'toast';
@@ -501,34 +451,20 @@
           }, 1500);
         }
     
-        // 初始化
         function init() {
-          // 首次渲染
           setTimeout(renderMarkdown, 100);
           
-          // 绑定输入事件（实时渲染）
           markdownInput.addEventListener('input', renderMarkdown);
           
-          // 绑定按钮事件
           btnEdit.addEventListener('click', () => switchMode('edit'));
           btnPreview.addEventListener('click', () => switchMode('preview'));
           btnSplit.addEventListener('click', () => switchMode('split'));
           btnCopyHtml.addEventListener('click', copyHtmlContent);
           btnClear.addEventListener('click', clearContent);
-          btnFullscreen.addEventListener('click', toggleFullscreen);
           
-          // 初始化为分屏模式
           switchMode('split');
-          
-          // 监听全屏退出（ESC键）
-          document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && isFullscreen) {
-              toggleFullscreen();
-            }
-          });
         }
     
-        // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', init);
       </script>
     </div>
