@@ -106,8 +106,7 @@
         color: white;
       }
       .appmain {
-        width: 100%;
-        max-width: 800px;
+        max-width: 1600px;
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
@@ -313,7 +312,7 @@
         <a href="/tools/mdedit" class="active">Markdown编辑器</a>
       </div>
     </nav>
-    <div class="appmain">
+    <div class="appmain" style="width: 100%;">
       <div class="markdown-tool">
         <h2>Markdown 编辑器</h2>
         
@@ -397,22 +396,25 @@
           [btnEdit, btnPreview, btnSplit].forEach(btn => {
             btn.classList.remove('active');
           });
-          
+          const appMain = document.querySelector('.appmain');
           switch(mode) {
             case 'edit':
               btnEdit.classList.add('active');
               markdownInputWrap.style.display = 'block';
               markdownPreview.style.display = 'none';
+              appMain.style.width = '50%';
               break;
             case 'preview':
               btnPreview.classList.add('active');
               markdownInputWrap.style.display = 'none';
               markdownPreview.style.display = 'block';
+              appMain.style.width = '50%';
               break;
             case 'split':
               btnSplit.classList.add('active');
               markdownInputWrap.style.display = 'block';
               markdownPreview.style.display = 'block';
+              appMain.style.width = '100%';
               break;
           }
           
