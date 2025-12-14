@@ -106,7 +106,7 @@
         color: white;
       }
       .appmain {
-        max-width: 1600px;
+        width: 100%;
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
@@ -114,6 +114,7 @@
         padding: 30px;
         box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
         margin: 0 auto;
+        transition: max-width 0.2s ease;
       }
       .toast {
         position: fixed;
@@ -312,7 +313,7 @@
         <a href="/tools/mdedit" class="active">Markdown编辑器</a>
       </div>
     </nav>
-    <div class="appmain" style="width: 100%;">
+    <div class="appmain" style="max-width: 1600px;">
       <div class="markdown-tool">
         <h2>Markdown 编辑器</h2>
         
@@ -402,19 +403,19 @@
               btnEdit.classList.add('active');
               markdownInputWrap.style.display = 'block';
               markdownPreview.style.display = 'none';
-              appMain.style.width = '50%';
+              appMain.style.maxWidth = '800px';
               break;
             case 'preview':
               btnPreview.classList.add('active');
               markdownInputWrap.style.display = 'none';
               markdownPreview.style.display = 'block';
-              appMain.style.width = '50%';
+              appMain.style.maxWidth = '800px';
               break;
             case 'split':
               btnSplit.classList.add('active');
               markdownInputWrap.style.display = 'block';
               markdownPreview.style.display = 'block';
-              appMain.style.width = '100%';
+              appMain.style.maxWidth = '1600px';
               break;
           }
           
