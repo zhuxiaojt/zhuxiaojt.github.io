@@ -1465,7 +1465,7 @@ mojo.internal.interfaceSupport.Endpoint = class {
     }
     bindInBrowser(e, n) {
         console.assert(this.isPrimary() && !this.router_.isReading(), "endpoint is either associated or already bound"),
-        Mojo.bindInterface(e, this.router_.pipe, n)
+        mojo.bindInterface(e, this.router_.pipe, n)
     }
     associatePeerOfOutgoingEndpoint(e) {
         console.assert(this.router_, "cannot associate with unbound endpoint");
@@ -1637,7 +1637,7 @@ mojo.internal.interfaceSupport.InterfaceRemoteBase = class {
         return this.endpoint_
     }
     bindNewPipeAndPassReceiver() {
-        let {handle0: e, handle1: n} = Mojo.createMessagePipe();
+        let {handle0: e, handle1: n} = mojo.createMessagePipe();
         return this.bindHandle(e),
         new this.requestType_(mojo.internal.interfaceSupport.createEndpoint(n))
     }
@@ -1968,11 +1968,11 @@ mojo.internal.interfaceSupport.HandleReader = class {
             if (!this.watcher_)
                 return;
             const e = this.handle_.readMessage();
-            if (e.result == Mojo.RESULT_SHOULD_WAIT)
+            if (e.result == mojo.RESULT_SHOULD_WAIT)
                 return;
-            if (e.result == Mojo.RESULT_FAILED_PRECONDITION)
+            if (e.result == mojo.RESULT_FAILED_PRECONDITION)
                 return void this.onError();
-            if (e.result != Mojo.RESULT_OK)
+            if (e.result != mojo.RESULT_OK)
                 throw new Error("Unexpected error on HandleReader: " + e.result);
             this.onRead(e.buffer, e.handles)
         }
@@ -1980,3 +1980,4 @@ mojo.internal.interfaceSupport.HandleReader = class {
 }
 ;
 export {mojo};
+
