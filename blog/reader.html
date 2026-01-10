@@ -107,6 +107,7 @@
       }
       .appmain {
         width: 100%;
+        max-width: 800px;
         height: 90%;
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(8px);
@@ -116,6 +117,7 @@
         box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
         margin: 0 auto;
         transition: max-width 0.2s ease;
+        overflow: hidden;
       }
       .toast {
         position: fixed;
@@ -401,7 +403,7 @@ function test() {
             let blog_meta=document.getElementById('blog-meta');
             blog_title.textContent=blogMetaFile[0];
             document.title=blogMetaFile[0];
-            blog_title.textContent=blogMetaFile[1];
+            blog_meta.textContent=blogMetaFile[1];
           }catch{
             // 启用方式1：硬编码
             markdownContent = hardcodeMarkdown;
@@ -410,7 +412,7 @@ function test() {
             let blog_meta=document.getElementById('blog-meta');
             blog_title.textContent=blogMetaFile[0];
             document.title=blogMetaFile[0];
-            blog_title.textContent=blogMetaFile[1];
+            blog_meta.textContent=blogMetaFile[1];
           }
           
           renderMarkdownWithKaTeX(markdownContent);
