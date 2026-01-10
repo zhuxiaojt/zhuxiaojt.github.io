@@ -395,7 +395,7 @@ function test() {
           try{
             // 启用方式2：外部文件
             markdownContent = await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.md');
-            blogMetaFile=await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.blogMeta').split('\n');
+            blogMetaFile=(await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.blogMeta')).split('\n');
           }catch{
             // 启用方式1：硬编码
             markdownContent = hardcodeMarkdown;
