@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <title>Zhuxiao Open Markdown Render</title>
+    <script src="/api/md/marked.min.js"></script>
+    <link rel="stylesheet" href="/api/md/katex.min.css" crossorigin="anonymous">
+    <script src="/api/md/katex.min.js" crossorigin="anonymous"></script>
+    <script src="/api/md/highlight.min.js"></script>
+    <link rel="stylesheet" href="/api/md/hljsStyle.css">
+    <style>
+      html,body{
+        background-color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="markdown-render" id="markdownRender">
+      <p>等待渲染...</p>
+    </div>
+    <script>
+      let markdownRender = document.getElementById('markdownRender');
+      function renderMarkdownWithKaTeX(markdownContent) {
+          // LaTeX公式占位符替换
+          let mathBlocks = [];
+          let processedContent = markdownContent.replace(/\$\$(.*?)\$\$/gs, (match, content) => {
+            const index = mathBlocks.length;
+            mathBlocks.push(content);
+            return `[[KATEX_BLOCK_${index}]]`;
+          });
+        
+          let mathInlines = [];
+          processedContent = processedContent.replace(/(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)/g, (match, content) => {
+            const index = mathInlines.length;
+            mathInlines.push(content);
+            return `[[KATEX_INLINE_${index}]]`;
+          });
+        
+          // Markdown解析
+          marked.setOptions({
+            highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
+            gfm: true,
+            breaks: true
+          });
+          let htmlContent = marked.parse(processedContent);
+        
+          // 渲染LaTeX块级公式
+          htmlContent = htmlContent.replace(/\[\[KATEX_BLOCK_(\d+)\]\]/g, (match, index) => {
+            try {
+              return katex.renderToString(mathBlocks[parseInt(index)], { displayMode: true, throwOnError: false });
+            } catch (err) {
+              return `<div class="katex-error">公式渲染失败：${mathBlocks[parseInt(index)]}</div>`;
+            }
+          });
+        
+          // 渲染LaTeX行内公式
+          htmlContent = htmlContent.replace(/\[\[KATEX_INLINE_(\d+)\]\]/g, (match, index) => {
+            try {
+              return katex.renderToString(mathInlines[parseInt(index)], { displayMode: false, throwOnError: false });
+            } catch (err) {
+              return `<span class="katex-error">公式渲染失败：${mathInlines[parseInt(index)]}</span>`;
+            }
+          });
+        
+          // 插入渲染内容 + 代码高亮
+          markdownRender.innerHTML = htmlContent;
+          document.querySelectorAll('.markdown-render pre code').forEach(block => hljs.highlightElement(block));
+      }
+      window.addEventListener('message', function (e) {
+        let msg = e.data;
+        if (!msg || !msg.type) return;
+  
+        // ========== 指令1：injectStyle 样式注入 ==========
+        let injectStyleId = 'parent-inject-style';
+        if (msg.type === 'injectStyle' && typeof msg.css === 'string' && msg.css.trim()) {
+          let oldStyle = document.getElementById(injectStyleId);
+          if (oldStyle) oldStyle.remove();
+          // 步骤2：创建新的style标签
+          let newStyle = document.createElement('style');
+          newStyle.id = injectStyleId;
+          newStyle.textContent = msg.css;
+          // 步骤3：插入到head中生效
+          document.head.appendChild(newStyle);
+        }
+  
+        // ========== 指令2：SetRenderText 执行渲染 ==========
+        if (msg.type === 'SetRenderText' && typeof msg.text === 'string' && msg.text.trim()) {
+          renderMarkdownWithKaTeX(msg.text)
+        }
+      });
+    </script>
+  </body>
+</html>
