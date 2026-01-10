@@ -391,27 +391,21 @@ function test() {
         // ==================== 初始化 ====================
         async function initBlog() {
           let markdownContent;
-          
+          let blogMetaFile;
           try{
             // 启用方式2：外部文件
             markdownContent = await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.md');
-            let blogMetaFile=await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.blogMeta').split('\n');
-            let blog_title=document.getElementById('blog-title');
-            let blog_meta=document.getElementById('blog-meta');
-            blog_title.textContent=blogMetaFile[0];
-            document.title=blogMetaFile[0];
-            blog_meta.textContent=blogMetaFile[1];
+            blogMetaFile=await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.blogMeta').split('\n');
           }catch{
             // 启用方式1：硬编码
             markdownContent = hardcodeMarkdown;
-            let blogMetaFile='测试页面\n发布时间：发布时间 | 作者：作者 | 标签：Markdown,HTML,JavaScript'.split('\n');
-            let blog_title=document.getElementById('blog-title');
-            let blog_meta=document.getElementById('blog-meta');
-            blog_title.textContent=blogMetaFile[0];
-            document.title=blogMetaFile[0];
-            blog_meta.textContent=blogMetaFile[1];
+            blogMetaFile='测试页面\n发布时间：发布时间 | 作者：作者 | 标签：Markdown,HTML,JavaScript'.split('\n');
           }
-          
+          let blog_title=document.getElementById('blog-title');
+          let blog_meta=document.getElementById('blog-meta');
+          blog_title.textContent=blogMetaFile[0];
+          document.title=blogMetaFile[0];
+          blog_meta.textContent=blogMetaFile[1];
           renderMarkdownWithKaTeX(markdownContent);
         }
         
