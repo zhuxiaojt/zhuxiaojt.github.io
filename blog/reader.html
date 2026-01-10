@@ -394,8 +394,8 @@ function test() {
           
           try{
             // 启用方式2：外部文件
-            markdownContent = await loadExternalFile('/blog/Files'+window.location.search.substring(1)+'.md');
-            let blogMetaFile=await loadExternalFile('/blog/Files'+window.location.search.substring(1)+'.blogMeta').split('\n');
+            markdownContent = await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.md');
+            let blogMetaFile=await loadExternalFile('/blog/Files/'+window.location.search.substring(1)+'.blogMeta').split('\n');
             let blog_title=document.getElementById('blog-title');
             let blog_meta=document.getElementById('blog-meta');
             blog_title.textContent=blogMetaFile[0];
