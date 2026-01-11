@@ -14,35 +14,35 @@
     ></iframe>
     <script>
       let iframe = document.getElementById('mdRenderIframe');
-      function GetDocsTextByNavigator(){
+      async function GetDocsTextByNavigator(){
         if(navigator.language.startsWith('zh')){
-          return fetch('./ChineseDocs.md');
+          return await fetch('./ChineseDocs.md');
         }else if(navigator.language.startsWith('en')){
-          return fetch('./EnglishDocs.md');
+          return await fetch('./EnglishDocs.md');
         }else{
-          return fetch('./SwichLanguage.md');
+          return await fetch('./SwichLanguage.md');
         }
       }
-      function GetDocsTextByLocarch(){
+      async function GetDocsTextByLocarch(){
         let locarch = window.location.search;
         if(locarch.trim()){
           if(locarch.substring(1).startsWith('zh')){
-            return fetch('./ChineseDocs.md');
+            return await fetch('./ChineseDocs.md');
           }else if(locarch.substring(1).startsWith('en')){
-            return fetch('./EnglishDocs.md');
+            return await fetch('./EnglishDocs.md');
           }else{
-            return GetDocsTextByNavigator();
+            return await GetDocsTextByNavigator();
           }
         }else{
-          return GetDocsTextByNavigator();
+          return await GetDocsTextByNavigator();
         }
       }
-      function GetDocsText(){
-        let result = GetDocsTextByLocarch();
-        if(!result.ok) throw new Error(`文档请求失败`);
+      async function GetDocsText(){
+        let result = await GetDocsTextByLocarch();
+        if(!result.ok) throw new Error(`文档请求失败 [$result.status]`);
         return result.text();
       }
-      iframe.onload = function(){
+      iframe.onload = async function(){
         iframe.contentWindow.postMessage({type:'injectStyle',css:`
         .markdown-render h1 {
           font-size: 24px;
@@ -119,7 +119,7 @@
           border-radius: 8px;
           margin: 12px 0;
         }`},'*');
-        iframe.contentWindow.postMessage({type:'SetRenderText',text:GetDocsText()},'*');
+        iframe.contentWindow.postMessage({type:'SetRenderText',text:await GetDocsText()},'*');
       }
     </script>
   </body>
