@@ -14,35 +14,35 @@
     ></iframe>
     <script>
       let iframe = document.getElementById('mdRenderIframe');
-      async function GetDocsTextByNavigator(){
+      function GetDocsTextByNavigator(){
         if(navigator.language.startsWith('zh')){
-          return await fetch('./ChineseDocs.md');
+          return fetch('./ChineseDocs.md');
         }else if(navigator.language.startsWith('en')){
-          return await fetch('./EnglishDocs.md');
+          return fetch('./EnglishDocs.md');
         }else{
-          return await fetch('./SwichLanguage.md');
+          return fetch('./SwichLanguage.md');
         }
       }
-      async function GetDocsTextByLocarch(){
+      function GetDocsTextByLocarch(){
         let locarch = window.location.search;
         if(locarch.trim()){
           if(locarch.substring(1).startsWith('zh')){
-            return await fetch('./ChineseDocs.md');
+            return fetch('./ChineseDocs.md');
           }else if(locarch.substring(1).startsWith('en')){
-            return await fetch('./EnglishDocs.md');
+            return fetch('./EnglishDocs.md');
           }else{
-            return await GetDocsTextByNavigator();
+            return GetDocsTextByNavigator();
           }
         }else{
-          return await GetDocsTextByNavigator();
+          return GetDocsTextByNavigator();
         }
       }
       function GetDocsText(){
         let result = GetDocsTextByLocarch();
-        if(!result.ok) throw new Error(`文档请求失败 [${result.status}]`);
+        if(!result.ok) throw new Error(`文档请求失败`);
         return result.text();
       }
-      iframe.onload = async function(){
+      iframe.onload = function(){
         iframe.contentWindow.postMessage({type:'injectStyle',css:`
         .markdown-render h1 {
           font-size: 24px;
