@@ -37,9 +37,9 @@
           return await GetDocsTextByNavigator();
         }
       }
-      async function GetDocsText(){
-        let result = await GetDocsTextByLocarch();
-        if(!result.ok) throw new Error(`文档请求失败 [${res.status}]`);
+      function GetDocsText(){
+        let result = GetDocsTextByLocarch();
+        if(!result.ok) throw new Error(`文档请求失败 [${result.status}]`);
         return result.text();
       }
       iframe.onload = async function(){
