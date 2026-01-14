@@ -1,0 +1,300 @@
+ 众所周知，在Python中，有一个经典的GUI库叫`tkinter`，`tkinter`的操作十分简单，且包含在标准库中，所以很多人（尤其是新手）都喜欢使用`tkinter`来创建界面
+
+但是`tkinter`的限制十分的多，所以一般大型项目都不会使用`tkinter`来作为窗口框架，而是使用像PyQt5之类的更高级的第三方库来创建界面
+
+又众所周知，许多软件都不喜欢使用Windows自带的标题栏，而是会自己制作一个，这样的标题栏自由度更高，开发者想加什么就加什么，但是`tkinter`如果去掉自带的标题栏，就会带来很多不便，所以，我们要挑战用`tkinter`制作一个自定义标题栏窗口，并且像正常窗口一样可以使用
+
+* * *
+
+（这里假设你对`tkinter`有过了解，并且只使用Windows）
+
+* * *
+
+#### 任务栏图标
+
+首先，`tkinter`隐藏自带标题栏的第一个问题，就是任务栏图标
+
+普通窗口都是有任务栏图标的，但是我们一给窗口一个`overrideredirect`，任务栏图标就消失了
+
+那么我就很快想到了一个方法：创建一个有标题栏的全透明主窗口，来创造一个“假的”任务栏图标，用来操作自定义窗口
+
+不过我们还得处理窗口事件同步，所以我们需要对自定义窗口使用一个`transient`，作为透明主窗口的附属窗口，用来同步一些类似最小化、关闭的事件
+
+于是我们就有了这样的代码：
+
+```python
+from tkinter import *
+def create_gui():
+    root=Tk()
+    root.title("标题")
+    root.geometry("500x0")
+    root.attributes("-alpha",0.0)#透明窗口
+    lgwin=Toplevel(root)
+    lgwin.title("虽然这个标题不会显示但是还是设一下")
+    lgwin.geometry("1000x800")
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)#无标题
+    lgwin.attributes("-alpha",1.0)#因为root是全透明的，为了防止透明属性被lgwin继承所以单独设置
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind("<FocusIn>", on_root_focus)#点击任务栏图标时让lgwin获得焦点
+    return root,lgwin
+#这个代码是从我的一个项目中截取的，这时gui.py的一部分，启动主循环在main.py
+```
+
+#### 关闭、最小化、最大化
+
+由于没有了系统提供的标题栏，我们需要自己定义一个，来实现系统标题栏的功能
+
+这里使用Canvas来实现标题栏。
+
+我们需要在标题栏右边放按钮，为了防止窗口大小改变，需要每次窗口大小改变时都重绘标题栏
+
+关闭很好实现，直接`root.destroy()`就行，最小化也是直接`root.iconify()`就行
+
+主要是最大化，我们需要获得屏幕工作区大小（不包含任务栏的屏幕大小），这里我们使用`ctypes`来获取
+
+```python
+import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+```
+
+为了还原窗口，我们需要记录最大化之前的窗口大小
+
+那么代码如下：
+
+```python
+from tkinter import *
+import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+
+    return width, height
+def create_gui():
+    root=Tk()
+    root.title("LGAPP")
+    root.geometry("500x0")
+    root.attributes("-alpha",0.0)
+    lgwin=Toplevel(root)
+    lgwin.title("LGAPP")
+    lgwin.geometry("1000x800")
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)
+    lgwin.attributes("-alpha",1.0)
+    lgwin.config(bg="#ffffff")
+    ismax=False#是否最大化
+    presize=(1000,800,0,0)#记录原来的窗口大小，这里需要有一个默认值
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind("<FocusIn>", on_root_focus)
+    titlebar=Canvas(lgwin,height=30,bg="#f0f0f0")#标题栏
+    titlebar.pack(side=TOP,fill=X)
+    def draw_titlebar():
+        nonlocal ismax
+        if ismax:
+            maxtxt="❐"#最大化时显示还原按钮图标
+            maxsz=10#还原图标大一些所以字号设为10
+        else:
+            maxtxt="□"#没有最大化时显示最大化图标
+            maxsz=15
+        titlebar.delete("all")
+        winwidth=lgwin.winfo_width()
+        titlebar.create_rectangle(winwidth-30,0,winwidth,30,fill="#f0f0f0",outline="#f0f0f0",tags="close_btn")#设置tag方便识别
+        titlebar.create_text(winwidth-15,15,text="×",font=("consolas",15),fill="#000000")
+        titlebar.create_rectangle(winwidth-60,0,winwidth-30,30,fill="#f0f0f0",outline="#f0f0f0",tags="max_btn")
+        titlebar.create_text(winwidth-45,15,text=maxtxt,font=("consolas",maxsz),fill="#000000")
+        titlebar.create_rectangle(winwidth-90,0,winwidth-60,30,fill="#f0f0f0",outline="#f0f0f0",tags="min_btn")
+        titlebar.create_text(winwidth-75,15,text="—",font=("consolas",13),fill="#000000")
+        lgwin.update()
+    lgwin.after(100,draw_titlebar)
+    lgwin.bind("<Configure>", lambda e: draw_titlebar())#绑定窗口事件用来重绘标题栏
+    def close_window():
+        root.destroy()
+    def max_window():
+        nonlocal ismax,presize
+        ismax=not ismax#切换状态
+        if ismax:
+            try:
+                presize=(lgwin.winfo_width(),lgwin.winfo_height(),lgwin.winfo_x(),lgwin.winfo_y())#设置最大化前的窗口大小和位置
+                work_w,work_h=get_workarea_size()#获得工作区大小
+                lgwin.geometry(f"{work_w}x{work_h}+0+0")
+            except:
+                pass
+        else:
+            lgwin.geometry(f"{presize[0]}x{presize[1]}+{presize[2]}+{presize[3]}")#还原窗口 
+    def min_window():
+        root.iconify()
+    def on_titlebar_click(event):
+        clkitems=titlebar.find_overlapping(event.x,event.y,event.x,event.y)
+        for item in clkitems:
+            tags=titlebar.gettags(item)#根据tag识别点击了什么按钮
+            if "close_btn" in tags:
+                close_window()
+            elif "max_btn" in tags:
+                max_window()
+            elif "min_btn" in tags:
+                min_window()
+    def on_mouse_move(event):#悬停效果
+        draw_titlebar()
+        items = titlebar.find_overlapping(event.x, event.y, event.x, event.y)
+        for item in items:
+            tags=titlebar.gettags(item)
+            if "close_btn" in tags:
+                titlebar.itemconfig(item,fill="#ffaaaa")
+            elif "max_btn" in tags:
+                titlebar.itemconfig(item,fill="#e0e0e0")
+            elif "min_btn" in tags:
+                titlebar.itemconfig(item,fill="#e0e0e0")
+    titlebar.bind("<Motion>", on_mouse_move)
+    lgwin.bind("<ButtonRelease-1>", on_titlebar_click)#这里为了兼容后面的拖动功能所以绑定的是鼠标松开事件
+    return root,lgwin,titlebar
+```
+
+#### 拖动窗口
+
+一个窗口不能总在一个位置，所以我们需要添加一个拖动功能
+
+拖动时需要记录鼠标相对窗口的偏移量，然后根据鼠标位置和偏移量设置窗口位置
+
+OK这一部分还好，那么直接上代码：
+
+```python
+from tkinter import *
+import ctypes
+from ctypes import wintypes
+def get_workarea_size():
+    user32 = ctypes.windll.user32
+    SPI_GETWORKAREA = 0x0030
+    rect = wintypes.RECT()
+    success = user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+    if not success:
+        return 1920, 1080
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+
+    return width, height
+def create_gui():
+    root=Tk()
+    root.title("LGAPP")
+    root.geometry("500x0")
+    root.attributes("-alpha",0.0)
+    lgwin=Toplevel(root)
+    lgwin.title("LGAPP")
+    lgwin.geometry("1000x800")
+    lgwin.transient(root)
+    lgwin.overrideredirect(True)
+    lgwin.attributes("-alpha",1.0)
+    lgwin.config(bg="#ffffff")
+    ismax=False
+    movex=0#记录偏移量
+    movey=0
+    ismove=False#是否在拖动
+    presize=(1000,800,0,0)
+    def on_root_focus(event):
+        if lgwin and lgwin.winfo_exists():
+            lgwin.lift()
+            lgwin.focus_force()
+    root.bind("<FocusIn>", on_root_focus)
+    titlebar=Canvas(lgwin,height=30,bg="#f0f0f0")
+    titlebar.pack(side=TOP,fill=X)
+    def draw_titlebar():
+        nonlocal ismax
+        if ismax:
+            maxtxt="❐"
+            maxsz=10
+        else:
+            maxtxt="□"
+            maxsz=15
+        titlebar.delete("all")
+        winwidth=lgwin.winfo_width()
+        titlebar.create_rectangle(winwidth-30,0,winwidth,30,fill="#f0f0f0",outline="#f0f0f0",tags="close_btn")
+        titlebar.create_text(winwidth-15,15,text="×",font=("consolas",15),fill="#000000")
+        titlebar.create_rectangle(winwidth-60,0,winwidth-30,30,fill="#f0f0f0",outline="#f0f0f0",tags="max_btn")
+        titlebar.create_text(winwidth-45,15,text=maxtxt,font=("consolas",maxsz),fill="#000000")
+        titlebar.create_rectangle(winwidth-90,0,winwidth-60,30,fill="#f0f0f0",outline="#f0f0f0",tags="min_btn")
+        titlebar.create_text(winwidth-75,15,text="—",font=("consolas",13),fill="#000000")
+        lgwin.update()
+    lgwin.after(100,draw_titlebar)
+    lgwin.bind("<Configure>", lambda e: draw_titlebar())
+    def close_window():
+        root.destroy()
+    def max_window():
+        nonlocal ismax,presize
+        ismax=not ismax
+        if ismax:
+            try:
+                presize=(lgwin.winfo_width(),lgwin.winfo_height(),lgwin.winfo_x(),lgwin.winfo_y())
+                work_w,work_h=get_workarea_size()
+                lgwin.geometry(f"{work_w}x{work_h}+0+0")
+            except:
+                pass
+        else:
+            lgwin.geometry(f"{presize[0]}x{presize[1]}+{presize[2]}+{presize[3]}")  
+    def min_window():
+        root.iconify()
+    def on_titlebar_click(event):
+        clkitems=titlebar.find_overlapping(event.x,event.y,event.x,event.y)
+        for item in clkitems:
+            tags=titlebar.gettags(item)
+            if "close_btn" in tags:
+                close_window()
+            elif "max_btn" in tags:
+                max_window()
+            elif "min_btn" in tags:
+                min_window()
+    def on_mouse_move(event):
+        draw_titlebar()
+        items = titlebar.find_overlapping(event.x, event.y, event.x, event.y)
+        for item in items:
+            tags=titlebar.gettags(item)
+            if "close_btn" in tags:
+                titlebar.itemconfig(item,fill="#ffaaaa")
+            elif "max_btn" in tags:
+                titlebar.itemconfig(item,fill="#e0e0e0")
+            elif "min_btn" in tags:
+                titlebar.itemconfig(item,fill="#e0e0e0")
+    titlebar.bind("<Motion>", on_mouse_move)
+    def start_move(event):
+        nonlocal movex,movey,ismove
+        if not ismax:#最大化不可拖动
+            ismove=True#标记正在拖动
+            movex=event.x_root-lgwin.winfo_x()#记录偏移量
+            movey=event.y_root-lgwin.winfo_y()
+    def do_move(event):
+        if ismove:
+            lgwin.geometry(f"+{event.x_root-movex}+{event.y_root-movey}")#设置窗口位置
+    def stop_move(event):
+        nonlocal ismove
+        ismove = False#结束拖动
+        on_titlebar_click(event)#防止事件冲突把标题栏点击事件放这里
+    
+    titlebar.bind("<ButtonPress-1>",start_move)
+    lgwin.bind("<B1-Motion>",do_move)
+    lgwin.bind("<ButtonRelease-1>", stop_move)
+    return root,lgwin,titlebar
+```
+
+那么现在，我们就成功地制作了一个自定义标题栏的tkinter窗口
+
+如果你仔细看会发现这个窗口不能缩放，有兴趣可以自己研究
