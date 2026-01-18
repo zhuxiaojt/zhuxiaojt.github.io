@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图床上传 - 上传后显示文件名(编号.后缀)</title>
+    <style>
+        body {padding: 40px; font-family: sans-serif; max-width: 800px; margin: 0 auto;}
+        #fileInput {padding: 10px; border:1px solid #ddd; border-radius:5px; width: 60%;}
+        #uploadBtn {padding:10px 20px; background:#2ea44f; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-left:10px;}
+        #uploadBtn:disabled {background:#94d3a2; cursor:not-allowed;}
+        #msg {margin-top:20px; font-size:14px; line-height:1.8; padding:10px; border-radius:5px;}
+        .success {color:#155724; background:#d4edda; border:1px solid #c3e6cb; font-weight: bold;}
+        .error {color:#721c24; background:#f8d7da; border:1px solid #f5c6cb;}
+        .loading {color:#0c5460; background:#d1ecf1; border:1px solid #bee5eb;}
+        #result {margin-top:15px; font-size:16px; color:#0066cc; font-weight: bold;}
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" accept="*" />
+    <button id="uploadBtn" disabled>选择文件上传</button>
+    <div id="msg"></div>
+    <div id="result"></div> <!-- 用于显示最终文件名：如1.png -->
+
+    <script>
+        // ================ 【只改这2行！！！】你的仓库信息 ================
+        const GITHUB_USER = "你的GitHub用户名";  // 例：abc123
+        const GITHUB_REPO = "你的GitHub仓库名";  // 例：my-img-bed
+        // ==============================================================
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const msg = document.getElementById('msg');
+        const result = document.getElementById('result');
+        const TRIGGER_API = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/dispatches`;
+        const COUNTER_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/api/img/cnt.txt`; // 计数文件直读地址（无缓存）
+        const MAX_SIZE = 25 * 1024 * 1024; // GitHub硬性限制：单文件≤25MB
+
+        // 选择文件后启用按钮
+        fileInput.addEventListener('change', () => {
+            uploadBtn.disabled = !fileInput.files.length;
+            msg.innerHTML = '';
+            result.innerHTML = '';
+            msg.className = '';
+        });
+
+        // 点击上传 - 核心逻辑
+        uploadBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+            if (file.size > MAX_SIZE) {
+                msg.innerHTML = `❌ 文件过大！最大支持25MB，当前：${(file.size/1024/1024).toFixed(2)}MB`;
+                msg.className = 'error';
+                return;
+            }
+
+            uploadBtn.disabled = true;
+            msg.innerHTML = `🔄 正在上传【${file.name}】，请稍候...`;
+            msg.className = 'loading';
+            result.innerHTML = '';
+
+            try {
+                // 步骤1：文件转纯Base64编码（去掉前缀，符合Action要求）
+                const pureBase64 = await fileToBase64(file);
+                // 步骤2：调用API触发GitHub Action上传
+                await triggerUploadAction(file.name, pureBase64);
+                // 步骤3：上传成功后，读取最新编号 + 拼接最终文件名【核心新增】
+                const latestNum = await readLatestFileNumber(); // 读取最新编号
+                const fileExt = '.' + file.name.split('.').pop(); // 提取原文件后缀
+                const finalFileName = `${latestNum}${fileExt}`; // 拼接：编号.后缀
+                
+                // 页面展示结果
+                msg.innerHTML = `✅ 上传成功！`;
+                msg.className = 'success';
+                result.innerHTML = `📌 上传后的文件名：${finalFileName}`; // 显示最终结果
+            } catch (err) {
+                msg.innerHTML = `❌ 上传失败：${err.message}`;
+                msg.className = 'error';
+                result.innerHTML = '';
+            } finally {
+                uploadBtn.disabled = false;
+                fileInput.value = '';
+            }
+        });
+
+        // ✅ 工具函数1：本地文件 转 纯Base64编码（无前缀）
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+                reader.onerror = (err) => reject(err);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ✅ 核心函数：触发GitHub Action上传的请求
+        async function triggerUploadAction(fileName, base64Content) {
+            const response = await fetch(TRIGGER_API, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/vnd.github+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'auto-upload-event', // 必须与Action的types一致，不能改！
+                    client_payload: {
+                        operType: 'upload',
+                        fileName: fileName,
+                        base64Content: base64Content
+                    }
+                })
+            });
+            // 成功的唯一标准：返回204 No Content (GitHub官方规范)
+            if (response.status !== 204) {
+                const errInfo = await response.json().catch(() => ({message: response.statusText}));
+                throw new Error(errInfo.message || `请求失败，状态码：${response.status}`);
+            }
+        }
+
+        // ✅ 核心新增函数：读取最新的文件编号（从api/img/cnt.txt读取）
+        async function readLatestFileNumber() {
+            // 加随机参数防缓存，保证读取的是最新值
+            const res = await fetch(`${COUNTER_FILE_URL}?t=${Date.now()}`);
+            if (!res.ok) throw new Error('读取编号失败，请稍后重试');
+            const num = await res.text();
+            return num.trim(); // 返回纯数字编号
+        }
+    </script>
+</body>
+</html>
