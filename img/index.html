@@ -103,6 +103,7 @@
                     'Accept': 'application/vnd.github+json',
                     'Content-Type': 'application/json',
                     'Authorization': `token ${GITHUB_TOKEN}`,
+                    'X-GitHub-Api-Version': '2022-11-28',
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' // 关键3，模拟浏览器请求，绕过GitHub风控
                 },
                 body: JSON.stringify({
