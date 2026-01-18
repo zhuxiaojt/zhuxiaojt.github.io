@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>图床上传 - 上传后显示文件名(编号.后缀)</title>
+    <title>图床上传</title>
     <style>
         body {padding: 40px; font-family: sans-serif; max-width: 800px; margin: 0 auto;}
         #fileInput {padding: 10px; border:1px solid #ddd; border-radius:5px; width: 60%;}
@@ -19,12 +19,12 @@
     <input type="file" id="fileInput" accept="*" />
     <button id="uploadBtn" disabled>选择文件上传</button>
     <div id="msg"></div>
-    <div id="result"></div> <!-- 用于显示最终文件名：如1.png -->
+    <div id="result"></div> <!-- 用于显示最终文件名 -->
 
     <script>
         // ================ 【只改这2行！！！】你的仓库信息 ================
-        const GITHUB_USER = "你的GitHub用户名";  // 例：abc123
-        const GITHUB_REPO = "你的GitHub仓库名";  // 例：my-img-bed
+        const GITHUB_USER = "zhuxiaojt";  // 例：abc123
+        const GITHUB_REPO = "zhuxiaojt.github.io";  // 例：my-img-bed
         // ==============================================================
         const fileInput = document.getElementById('fileInput');
         const uploadBtn = document.getElementById('uploadBtn');
