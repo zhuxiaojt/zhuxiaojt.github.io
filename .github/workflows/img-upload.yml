@@ -1,0 +1,90 @@
+name: 图床上传API
+on:
+  repository_dispatch:
+    types: [auto-upload-event]
+
+jobs:
+  upload-with-auto-number:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 核心配置
+        id: config
+        run: |
+          echo "UPLOAD_FOLDER=img" >> $GITHUB_ENV
+          # ======================================================
+          echo "BRANCH=main" >> $GITHUB_ENV
+          echo "OWNER=${{ github.repository_owner }}" >> $GITHUB_ENV
+          echo "REPO=${{ github.event.repository.name }}" >> $GITHUB_ENV
+          echo "COUNTER_FILE=api/img/cnt.txt" >> $GITHUB_ENV
+
+      - name: 读取【api/img/cnt.txt】的当前序号
+        id: read-counter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 读取新路径的计数文件
+          COUNTER_CONTENT=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}" | jq -r '.content')
+          # Base64解码计数文件内容
+          CURRENT_NUM=$(echo $COUNTER_CONTENT | base64 -d | tr -d '[:space:]')
+          # 计数自增
+          NEW_NUM=$((CURRENT_NUM + 1))
+          echo "当前计数：$CURRENT_NUM → 新文件编号：$NEW_NUM"
+          echo "CURRENT_NUM=$CURRENT_NUM" >> $GITHUB_ENV
+          echo "NEW_NUM=$NEW_NUM" >> $GITHUB_ENV
+
+      - name: 提取文件后缀 + 生成【数字+后缀】最终文件名
+        id: gen-filename
+        run: |
+          ORIGIN_NAME="${{ github.event.client_payload.fileName }}"
+          FILE_EXT=".${ORIGIN_NAME##*.}"
+          FINAL_FILENAME="${{ env.NEW_NUM }}${FILE_EXT}"
+          UPLOAD_PATH="${{ env.UPLOAD_FOLDER }}/${FINAL_FILENAME}"
+          echo "原始文件名：$ORIGIN_NAME → 最终文件名：$FINAL_FILENAME"
+          echo "FINAL_FILENAME=$FINAL_FILENAME" >> $GITHUB_ENV
+          echo "UPLOAD_PATH=$UPLOAD_PATH" >> $GITHUB_ENV
+
+      - name: 上传文件到指定文件夹（仅上传，无删除功能）
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE64_CONTENT: ${{ github.event.client_payload.base64Content }}
+        run: |
+          JSON_DATA=$(jq -n \
+            --arg msg "自动编号上传: ${{ env.UPLOAD_PATH }}" \
+            --arg content "$BASE64_CONTENT" \
+            --arg branch "${{ env.BRANCH }}" \
+            '{message: $msg, content: $content, branch: $branch}')
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "$JSON_DATA" \
+            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.UPLOAD_PATH }}"
+
+      - name: 写回自增后的序号到【api/img/cnt.txt】（完成闭环）
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 修改：获取新路径计数文件的SHA值（更新文件必须传SHA）
+          COUNTER_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}" | jq -r '.sha')
+          # 将新数字转为Base64编码（GitHub API强制要求）
+          NEW_NUM_BASE64=$(echo -n "${{ env.NEW_NUM }}" | base64)
+          # 更新新路径的计数文件
+          JSON_DATA=$(jq -n \
+            --arg msg "计数自增: ${{ env.CURRENT_NUM }} → ${{ env.NEW_NUM }}" \
+            --arg content "$NEW_NUM_BASE64" \
+            --arg sha "$COUNTER_SHA" \
+            --arg branch "${{ env.BRANCH }}" \
+            '{message: $msg, content: $content, sha: $sha, branch: $branch}')
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "$JSON_DATA" \
+            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}"
+
+      - name: 上传完成
+        run: |
+          echo "🎉 上传成功！文件路径：${{ env.UPLOAD_PATH }}"
+          echo "🎉 计数文件已更新：api/img/cnt.txt → ${{ env.NEW_NUM }}"
