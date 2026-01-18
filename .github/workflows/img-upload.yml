@@ -86,5 +86,6 @@ jobs:
 
       - name: 上传完成
         run: |
-          echo "🎉 上传成功！文件路径：${{ env.UPLOAD_PATH }}"
+          echo "🎉 上传成功！最终文件名：${{ env.FINAL_FILENAME }}"
+          echo "🎉 文件存储路径：img/${{ env.FINAL_FILENAME }}"
           echo "🎉 计数文件已更新：api/img/cnt.txt → ${{ env.NEW_NUM }}"
