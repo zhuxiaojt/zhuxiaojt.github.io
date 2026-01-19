@@ -250,7 +250,7 @@
         const GITHUB_TOKEN = atob('Z2l0'+BASE64_TOKEN).trim();
         
         // ================ 常量 ================
-        const WORKFLOW_FILE = "img_upload.yml";
+        const WORKFLOW_FILE = "img-upload.yml";
         const WORKFLOW_API = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`;
         const COUNTER_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/api/img/cnt.txt`;
         const MAX_SIZE = 25 * 1024 * 1024;
