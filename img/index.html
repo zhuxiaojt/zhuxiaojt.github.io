@@ -51,27 +51,6 @@
             background-color: #f0f7ff;
         }
         
-        .upload-area i {
-            font-size: 48px;
-            color: #6e7681;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
-        .upload-area span {
-            display: block;
-            margin-bottom: 10px;
-            font-size: 18px;
-            color: #24292e;
-            font-weight: 500;
-        }
-        
-        .upload-area p {
-            color: #6e7681;
-            margin: 0;
-            font-size: 14px;
-        }
-        
         #fileInput {
             display: none;
         }
@@ -100,10 +79,6 @@
             background: linear-gradient(135deg, #2ea44f 0%, #216e39 100%);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(46, 164, 79, 0.3);
-        }
-        
-        #uploadBtn:active:not(:disabled) {
-            transform: translateY(0);
         }
         
         #uploadBtn:disabled {
@@ -211,67 +186,6 @@
             margin-bottom: 5px;
         }
         
-        .mode-selector {
-            display: flex;
-            margin-bottom: 25px;
-            border: 1px solid #d0d7de;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        
-        .mode-option {
-            flex: 1;
-            text-align: center;
-            padding: 12px;
-            background: #f6f8fa;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-            color: #57606a;
-        }
-        
-        .mode-option:hover {
-            background: #f3f4f6;
-        }
-        
-        .mode-option.active {
-            background: white;
-            color: #24292e;
-            font-weight: 600;
-            border-bottom: 3px solid #0969da;
-        }
-        
-        .chunk-settings {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f6f8fa;
-            border-radius: 8px;
-            border: 1px solid #e1e4e8;
-            display: none;
-        }
-        
-        .chunk-settings label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #24292e;
-        }
-        
-        .chunk-settings input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #d0d7de;
-            border-radius: 6px;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-        
-        .chunk-settings input:focus {
-            outline: none;
-            border-color: #0969da;
-            box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
-        }
-        
         .status-message {
             margin-top: 15px;
             padding: 12px;
@@ -287,11 +201,6 @@
     <div class="container">
         <h1>GitHub 图床上传</h1>
         
-        <div class="mode-selector">
-            <div class="mode-option active" data-mode="single">单文件上传</div>
-            <div class="mode-option" data-mode="chunked">大文件分块上传</div>
-        </div>
-        
         <div class="upload-area" id="uploadArea">
             <div style="font-size: 48px; margin-bottom: 15px;">📤</div>
             <span>点击或拖拽文件到此处</span>
@@ -300,12 +209,6 @@
         </div>
         
         <div id="fileInfo"></div>
-        
-        <div class="chunk-settings" id="chunkSettings">
-            <label for="chunkSize">分块大小 (KB):</label>
-            <input type="number" id="chunkSize" value="1024" min="256" max="10240" step="256">
-            <p style="font-size: 12px; color: #6e7681; margin-top: -10px; margin-bottom: 15px;">建议值: 小文件 256KB, 大文件 1024KB</p>
-        </div>
         
         <button id="uploadBtn" disabled>选择文件上传</button>
         
@@ -341,17 +244,17 @@
         const GITHUB_USER = "zhuxiaojt";
         const GITHUB_REPO = "zhuxiaojt.github.io";
         
-        // 注意：这里的token需要用你自己的细粒度token（只给Actions权限）
-        // 将下面字符串替换为你的Base64编码的token
+        // 注意：将下面Base64编码替换为你的token
+        // 在浏览器控制台运行 btoa("你的GitHub_Token") 获取编码
         const BASE64_TOKEN = "aHViX3BhdF8xMUJMT0tER1kwM3lLTWRIVGRKbk02X1FFV29udnNlalVHV3pOZWVQZDBEQUJaRTZMWlRmYkN2QTZCekViOTR1Q2tWNU9RN1gzWDBxQ3hJN1Zs";
         const GITHUB_TOKEN = atob('Z2l0'+BASE64_TOKEN).trim();
         
         // ================ 常量 ================
-        const WORKFLOW_FILE = "img-upload.yml"; // 你的工作流文件名
+        const WORKFLOW_FILE = "img_upload.yml";
         const WORKFLOW_API = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_FILE}/dispatches`;
         const COUNTER_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/api/img/cnt.txt`;
-        const MAX_SIZE = 25 * 1024 * 1024; // GitHub限制：单文件≤25MB
-        const CHUNK_THRESHOLD = 5 * 1024 * 1024; // 大于5MB使用分块上传
+        const MAX_SIZE = 25 * 1024 * 1024;
+        const MAX_INPUT_SIZE = 60 * 1024; // GitHub限制：workflow_dispatch inputs 最大64KB
         
         // ================ DOM元素 ================
         const fileInput = document.getElementById('fileInput');
@@ -366,26 +269,14 @@
         const finalUrl = document.getElementById('finalUrl');
         const errorMsg = document.getElementById('errorMsg');
         const errorContent = document.getElementById('errorContent');
-        const chunkSettings = document.getElementById('chunkSettings');
         const statusMessage = document.getElementById('statusMessage');
         
         // ================ 全局变量 ================
         let currentFile = null;
-        let uploadMode = 'single'; // 'single' 或 'chunked'
         let fileId = null;
         
         // ================ 事件监听器 ================
         document.addEventListener('DOMContentLoaded', () => {
-            // 模式选择
-            document.querySelectorAll('.mode-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    document.querySelectorAll('.mode-option').forEach(opt => opt.classList.remove('active'));
-                    option.classList.add('active');
-                    uploadMode = option.dataset.mode;
-                    chunkSettings.style.display = uploadMode === 'chunked' ? 'block' : 'none';
-                });
-            });
-            
             // 点击上传区域触发文件选择
             uploadArea.addEventListener('click', () => {
                 fileInput.click();
@@ -432,25 +323,12 @@
             
             currentFile = file;
             
-            // 自动选择模式
-            if (file.size > CHUNK_THRESHOLD) {
-                uploadMode = 'chunked';
-                document.querySelectorAll('.mode-option').forEach(opt => opt.classList.remove('active'));
-                document.querySelector('.mode-option[data-mode="chunked"]').classList.add('active');
-                chunkSettings.style.display = 'block';
-            } else {
-                uploadMode = 'single';
-                document.querySelectorAll('.mode-option').forEach(opt => opt.classList.remove('active'));
-                document.querySelector('.mode-option[data-mode="single"]').classList.add('active');
-                chunkSettings.style.display = 'none';
-            }
-            
             // 显示文件信息
             const sizeStr = formatFileSize(file.size);
             fileInfo.innerHTML = `
                 <strong>📄 已选择文件:</strong> ${file.name}<br>
                 <strong>📊 文件大小:</strong> ${sizeStr}<br>
-                <strong>⚡ 上传模式:</strong> ${uploadMode === 'single' ? '单文件上传' : '分块上传'}
+                <strong>⚡ 上传方式:</strong> ${file.size < 50 * 1024 ? '单文件上传' : '自动分块上传'}
             `;
             
             uploadBtn.disabled = false;
@@ -472,30 +350,47 @@
             hideResult();
             
             try {
-                if (uploadMode === 'single') {
-                    await uploadSingleFile();
+                // 检查文件大小，决定使用哪种上传方式
+                if (currentFile.size < 50 * 1024) {
+                    // 小文件：直接上传
+                    await uploadDirect();
                 } else {
-                    await uploadChunkedFile();
+                    // 大文件：分块上传
+                    await uploadWithChunks();
                 }
             } catch (error) {
                 showError(`上传失败: ${error.message}`);
                 console.error('Upload error:', error);
             } finally {
-                // 重置UI状态（但保留进度和结果）
                 fileInput.disabled = false;
             }
         }
         
-        // ================ 单文件上传 ================
-        async function uploadSingleFile() {
+        // ================ 直接上传（小文件） ================
+        async function uploadDirect() {
             updateProgress(0, '读取文件中...');
             
             // 转换为Base64
-            updateProgress(10, '编码文件中...');
+            updateProgress(20, '编码文件中...');
             const base64Content = await fileToBase64(currentFile);
             
-            // 发送请求
-            updateProgress(30, '上传到GitHub...');
+            // 检查Base64大小是否超过限制
+            const base64Size = new Blob([base64Content]).size;
+            if (base64Size > MAX_INPUT_SIZE) {
+                throw new Error('文件Base64编码后超过GitHub输入限制，将自动使用分块上传');
+            }
+            
+            // 获取当前计数器值
+            updateProgress(40, '获取文件编号...');
+            const currentNum = await readCurrentFileNumber();
+            
+            // 分配新编号
+            const newNum = parseInt(currentNum) + 1;
+            const fileExt = getFileExtension(currentFile.name);
+            const finalFileName = `${newNum}${fileExt}`;
+            
+            // 开始上传
+            updateProgress(60, '上传到GitHub...');
             
             const response = await fetch(WORKFLOW_API, {
                 method: 'POST',
@@ -516,35 +411,44 @@
             
             if (response.status !== 204) {
                 const errorText = await response.text();
+                console.log('API响应:', errorText);
+                
+                // 如果还是超过限制，尝试分块上传
+                if (response.status === 422 && errorText.includes('inputs are too large')) {
+                    showStatusMessage('文件较大，自动切换到分块上传...');
+                    await uploadWithChunks();
+                    return;
+                }
+                
                 throw new Error(`API返回错误: ${response.status} - ${errorText}`);
             }
             
             updateProgress(80, '等待文件处理...');
             
-            // 等待2秒让Action处理完成
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // 等待Action处理完成
+            await new Promise(resolve => setTimeout(resolve, 3000));
             
-            // 获取最新编号
-            updateProgress(90, '获取文件信息...');
-            const latestNum = await readLatestFileNumber();
-            const fileExt = currentFile.name.includes('.') ? '.' + currentFile.name.split('.').pop() : '';
-            const finalFileName = `${latestNum}${fileExt}`;
+            // 验证文件是否上传成功
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/img/${finalFileName}`;
+            const checkResponse = await fetch(fileUrl, { method: 'HEAD' });
+            
+            if (!checkResponse.ok) {
+                throw new Error('文件上传后验证失败');
+            }
             
             updateProgress(100, '上传完成！');
             
             // 显示结果
             showResult(fileUrl, finalFileName);
-            
-            // 重置文件选择
             resetFileSelection();
         }
         
-        // ================ 分块上传 ================
-        async function uploadChunkedFile() {
-            const chunkSize = parseInt(document.getElementById('chunkSize').value) * 1024;
+        // ================ 分块上传（大文件） ================
+        async function uploadWithChunks() {
+            // 分块大小：每块约50KB（Base64后会变大）
+            const chunkSize = 40 * 1024; // 40KB原始数据
             const totalChunks = Math.ceil(currentFile.size / chunkSize);
-            const fileExt = currentFile.name.includes('.') ? '.' + currentFile.name.split('.').pop() : '';
+            const fileExt = getFileExtension(currentFile.name);
             
             updateProgress(0, '开始分块上传...');
             showStatusMessage(`文件将被分成 ${totalChunks} 个分块上传`);
@@ -571,64 +475,110 @@
             
             if (startResponse.status !== 204) {
                 const errorText = await startResponse.text();
-                throw new Error(`初始化失败: ${startResponse.status} - ${errorText}`);
+                throw new Error(`初始化失败: ${errorText}`);
             }
             
-            // 等待一下让start操作完成
+            // 等待一下让start操作完成，获取文件ID
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // 读取最新编号作为fileId
-            const fileId = await readLatestFileNumber();
+            const fileId = await readCurrentFileNumber();
             showStatusMessage(`文件ID: ${fileId}，开始上传分块...`);
             
             // 2. 上传所有分块
             let uploadedChunks = 0;
+            const errors = [];
             
             for (let i = 0; i < totalChunks; i++) {
                 const start = i * chunkSize;
                 const end = Math.min(start + chunkSize, currentFile.size);
                 const chunk = currentFile.slice(start, end);
                 
-                updateProgress(10 + (i / totalChunks) * 60, `上传分块 ${i + 1}/${totalChunks}...`);
+                // 计算进度
+                const progress = 10 + (i / totalChunks) * 70;
+                updateProgress(progress, `上传分块 ${i + 1}/${totalChunks}...`);
                 showStatusMessage(`正在上传分块 ${i + 1}/${totalChunks}`);
                 
                 // 转换分块为Base64
                 const chunkBase64 = await blobToBase64(chunk);
                 
-                // 上传分块
-                const chunkResponse = await fetch(WORKFLOW_API, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
-                        'Accept': 'application/vnd.github.v3+json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        ref: 'main',
-                        inputs: {
-                            operation: 'chunk',
-                            fileId: fileId,
-                            chunkIndex: i.toString(),
-                            chunkData: chunkBase64
-                        }
-                    })
-                });
-                
-                if (chunkResponse.status !== 204) {
-                    throw new Error(`分块 ${i} 上传失败: ${chunkResponse.status}`);
+                // 检查分块大小
+                const chunkBase64Size = new Blob([chunkBase64]).size;
+                if (chunkBase64Size > MAX_INPUT_SIZE) {
+                    errors.push(`分块 ${i} 太大 (${formatFileSize(chunkBase64Size)})`);
+                    continue;
                 }
                 
-                uploadedChunks++;
+                // 尝试上传分块，最多重试3次
+                let retryCount = 0;
+                let chunkSuccess = false;
                 
-                // 每上传一个分块等待1秒，避免触发GitHub API限制
-                if (i < totalChunks - 1) {
+                while (retryCount < 3 && !chunkSuccess) {
+                    try {
+                        const chunkResponse = await fetch(WORKFLOW_API, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `token ${GITHUB_TOKEN}`,
+                                'Accept': 'application/vnd.github.v3+json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ref: 'main',
+                                inputs: {
+                                    operation: 'chunk',
+                                    fileId: fileId,
+                                    chunkIndex: i.toString(),
+                                    chunkData: chunkBase64
+                                }
+                            })
+                        });
+                        
+                        if (chunkResponse.status === 204) {
+                            chunkSuccess = true;
+                            uploadedChunks++;
+                        } else if (chunkResponse.status === 422) {
+                            // 分块还是太大，需要减小分块大小
+                            showStatusMessage(`分块 ${i} 太大，正在调整...`);
+                            // 这里可以尝试减小分块大小重新上传
+                            break;
+                        } else {
+                            const errorText = await chunkResponse.text();
+                            console.error(`分块 ${i} 上传失败:`, errorText);
+                            retryCount++;
+                            
+                            if (retryCount < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`分块 ${i} 上传异常:`, err);
+                        retryCount++;
+                        if (retryCount < 3) {
+                            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+                        }
+                    }
+                }
+                
+                if (!chunkSuccess) {
+                    errors.push(`分块 ${i} 上传失败`);
+                }
+                
+                // 为了避免触发GitHub API速率限制，每上传3个分块等待1秒
+                if ((i + 1) % 3 === 0 && i < totalChunks - 1) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
             
+            if (errors.length > 0) {
+                console.warn('上传过程中的错误:', errors);
+                showStatusMessage(`上传完成，但有 ${errors.length} 个分块失败`);
+            }
+            
+            if (uploadedChunks === 0) {
+                throw new Error('所有分块上传都失败了');
+            }
+            
             // 3. 完成上传
-            updateProgress(80, '合并分块...');
-            showStatusMessage(`所有分块上传完成，正在合并...`);
+            updateProgress(85, '合并分块...');
+            showStatusMessage(`正在合并 ${uploadedChunks}/${totalChunks} 个分块...`);
             
             const completeResponse = await fetch(WORKFLOW_API, {
                 method: 'POST',
@@ -647,13 +597,14 @@
             });
             
             if (completeResponse.status !== 204) {
-                throw new Error(`合并失败: ${completeResponse.status}`);
+                const errorText = await completeResponse.text();
+                console.warn('合并请求失败:', errorText);
             }
             
             updateProgress(95, '等待文件处理...');
             
-            // 等待3秒让合并操作完成
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // 等待合并操作完成
+            await new Promise(resolve => setTimeout(resolve, 5000));
             
             // 4. 显示结果
             updateProgress(100, '上传完成！');
@@ -662,9 +613,17 @@
             const finalFileName = `${fileId}${fileExt}`;
             const fileUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/img/${finalFileName}`;
             
-            showResult(fileUrl, finalFileName);
+            // 验证文件是否上传成功
+            try {
+                const checkResponse = await fetch(fileUrl, { method: 'HEAD' });
+                if (!checkResponse.ok) {
+                    throw new Error('文件合并后验证失败');
+                }
+            } catch (err) {
+                console.warn('文件验证失败，但可能仍在处理中:', err);
+            }
             
-            // 重置文件选择
+            showResult(fileUrl, finalFileName);
             resetFileSelection();
         }
         
@@ -687,17 +646,21 @@
             });
         }
         
-        async function readLatestFileNumber() {
+        async function readCurrentFileNumber() {
             try {
                 const response = await fetch(`${COUNTER_FILE_URL}?t=${Date.now()}`);
                 if (!response.ok) throw new Error('读取编号失败');
                 const text = await response.text();
                 return text.trim();
             } catch (error) {
-                console.error('读取编号失败，使用随机编号:', error);
-                // 如果读取失败，返回一个随机数作为fallback
-                return Math.floor(Math.random() * 10000).toString();
+                console.error('读取编号失败:', error);
+                throw error;
             }
+        }
+        
+        function getFileExtension(filename) {
+            const dotIndex = filename.lastIndexOf('.');
+            return dotIndex > 0 ? '.' + filename.substring(dotIndex + 1) : '';
         }
         
         function formatFileSize(bytes) {
@@ -726,9 +689,6 @@
         function showResult(url, filename) {
             finalUrl.textContent = url;
             resultDiv.style.display = 'block';
-            
-            // 自动复制到剪贴板
-            copyToClipboard();
         }
         
         function hideResult() {
@@ -759,7 +719,6 @@
             fileInfo.innerHTML = '';
             uploadBtn.textContent = '选择文件上传';
             
-            // 1秒后重新启用上传按钮
             setTimeout(() => {
                 uploadBtn.disabled = true;
             }, 1000);
@@ -791,6 +750,23 @@
                 }, 2000);
             }).catch(err => {
                 console.error('复制失败:', err);
+                // 备用方法
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const copyBtn = document.querySelector('.copy-btn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '已复制!';
+                copyBtn.classList.add('copied');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
             });
         }
     </script>
