@@ -390,46 +390,92 @@ jobs:
           fi
           
           FILE_ID="${{ env.FILE_ID }}"
+          START_TIME=$(date +%s)
+          MAX_WAIT=1800  # 30分钟，等待所有分块完成
           
-          # 检查状态文件
+          # 1. 首先检查状态文件是否存在
           STATUS_FILE="${{ env.TEMP_DIR }}/TEMPMETA_${FILE_ID}.json"
-          STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
           
-          if echo "$STATUS_RESPONSE" | grep -q '"message":"Not Found"'; then
-            echo "❌ 错误：状态文件不存在，上传可能已取消"
-            exit 1
-          fi
+          # 等待状态文件出现（可能还在创建中）
+          echo "等待状态文件出现..."
+          for i in $(seq 1 30); do  # 最多等30秒
+            STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
+            
+            if ! echo "$STATUS_RESPONSE" | grep -q '"message":"Not Found"'; then
+              echo "状态文件已找到"
+              break
+            fi
+            
+            if [ $i -eq 30 ]; then
+              echo "❌ 错误：状态文件不存在，上传可能已取消"
+              exit 1
+            fi
+            
+            echo "等待状态文件... ($i/30)"
+            sleep 1
+          done
           
-          STATUS_CONTENT=$(echo "$STATUS_RESPONSE" | jq -r '.content // empty' | base64 -d)
-          if [ -z "$STATUS_CONTENT" ]; then
-            echo "❌ 错误：状态文件内容为空"
-            exit 1
-          fi
+          # 2. 等待所有分块完成
+          echo "等待所有分块上传完成..."
+          ALL_COMPLETED=false
+          TOTAL_CHUNKS=0
+          FILE_EXT=""
           
-          TOTAL_CHUNKS=$(echo "$STATUS_CONTENT" | jq -r '.totalChunks')
-          FILE_EXT=$(echo "$STATUS_CONTENT" | jq -r '.extension')
-          
-          echo "检查 $TOTAL_CHUNKS 个分块状态..."
-          
-          # 检查所有分块状态
-          ALL_COMPLETED=true
-          for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
-            STATUS=$(echo "$STATUS_CONTENT" | jq -r ".chunks[\"$i\"] // \"pending\"")
-            if [ "$STATUS" != "completed" ]; then
-              echo "❌ 分块 $i 状态为 $STATUS，未完成"
-              ALL_COMPLETED=false
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            # 超时检查
+            if [ $ELAPSED -gt $MAX_WAIT ]; then
+              echo "❌ 等待超时（30分钟），可能还有分块未完成"
+              exit 1
+            fi
+            
+            # 读取状态文件
+            STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
+            
+            if echo "$STATUS_RESPONSE" | grep -q '"message":"Not Found"'; then
+              echo "❌ 错误：状态文件在等待过程中被删除"
+              exit 1
+            fi
+            
+            STATUS_CONTENT=$(echo "$STATUS_RESPONSE" | jq -r '.content // empty' | base64 -d)
+            if [ -z "$STATUS_CONTENT" ]; then
+              echo "⏳ 状态文件内容为空，等待5秒..."
+              sleep 5
+              continue
+            fi
+            
+            # 获取总分块数和扩展名
+            TOTAL_CHUNKS=$(echo "$STATUS_CONTENT" | jq -r '.totalChunks')
+            FILE_EXT=$(echo "$STATUS_CONTENT" | jq -r '.extension')
+            
+            # 检查所有分块状态
+            ALL_COMPLETED=true
+            INCOMPLETE_CHUNKS=0
+            
+            for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
+              STATUS=$(echo "$STATUS_CONTENT" | jq -r ".chunks[\"$i\"] // \"pending\"")
+              if [ "$STATUS" != "completed" ]; then
+                ALL_COMPLETED=false
+                INCOMPLETE_CHUNKS=$((INCOMPLETE_CHUNKS + 1))
+              fi
+            done
+            
+            if [ "$ALL_COMPLETED" = "true" ]; then
+              echo "✅ 所有分块已完成，可以开始合并"
+              break
+            else
+              echo "⏳ 还有 $INCOMPLETE_CHUNKS/$TOTAL_CHUNKS 个分块未完成，已等待 ${ELAPSED}秒..."
+              sleep 10  # 等待10秒后再次检查
             fi
           done
           
-          if [ "$ALL_COMPLETED" != "true" ]; then
-            echo "❌ 错误：还有分块未完成，无法合并"
-            exit 1
-          fi
-          
           echo "✅ 所有分块已完成，开始合并..."
           
-          # 创建临时文件合并所有分块
+          # 3. 创建临时文件合并所有分块
           TEMP_FILE="/tmp/merged_${FILE_ID}"
           rm -f "$TEMP_FILE"
           
@@ -450,7 +496,7 @@ jobs:
             echo "分块 $i 合并完成"
           done
           
-          # 上传最终文件
+          # 4. 上传最终文件
           FINAL_FILENAME="${FILE_ID}${FILE_EXT}"
           FINAL_PATH="${{ env.UPLOAD_DIR }}/${FINAL_FILENAME}"
           MERGED_BASE64=$(base64 -w 0 "$TEMP_FILE")
@@ -463,7 +509,7 @@ jobs:
             -d "{\"message\":\"上传合并文件: $FINAL_FILENAME\",\"content\":\"$MERGED_BASE64\",\"branch\":\"main\"}" \
             "https://api.github.com/repos/${{ env.REPO }}/contents/$FINAL_PATH"
           
-          # 清理临时文件
+          # 5. 清理临时文件
           echo "清理临时文件..."
           
           # 清理分块数据文件
@@ -507,15 +553,6 @@ jobs:
           
           # 方法1: 如果仓库启用了 Pages 自动部署，会自动触发
           echo "GitHub Pages 会自动检测到新文件并部署"
-          
-          # 方法2: 推送空提交触发（如果需要）
-          # echo "推送空提交触发 Pages 构建..."
-          # git config --global user.name 'GitHub Actions'
-          # git config --global user.email 'actions@github.com'
-          # git clone https://x-access-token:$GITHUB_TOKEN@github.com/${{ env.REPO }}.git repo
-          # cd repo
-          # git commit --allow-empty -m "Trigger Pages rebuild for new file: $FINAL_FILENAME"
-          # git push origin main
           
           echo "✅ GitHub Pages 部署已触发"
           
