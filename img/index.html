@@ -33,7 +33,7 @@
         const msg = document.getElementById('msg');
         const result = document.getElementById('result');
         const TRIGGER_API = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/dispatches`;
-        const COUNTER_FILE_URL = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/api/img/cnt.txt`; // 计数文件直读地址（无缓存）
+        const COUNTER_FILE_URL = `https://cors-anywhere.herokuapp.com/https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/api/img/cnt.txt`; // 计数文件直读地址（无缓存）
         const MAX_SIZE = 25 * 1024 * 1024; // GitHub硬性限制：单文件≤25MB
 
         // 选择文件后启用按钮
