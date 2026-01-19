@@ -1,91 +1,589 @@
 name: 图床上传API
+
 on:
-  repository_dispatch:
-    types: [auto-upload-event]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: '操作类型'
+        required: true
+        type: choice
+        options:
+          - single    # 单文件上传
+          - start     # 开始分块上传
+          - chunk     # 上传分块
+          - complete  # 完成上传
+          - cleanup   # 清理过期文件
+      fileId:
+        description: '文件ID'
+        required: false
+        default: ''
+        type: string
+      chunkIndex:
+        description: '分块序号'
+        required: false
+        default: ''
+        type: string
+      totalChunks:
+        description: '总分块数'
+        required: false
+        default: ''
+        type: string
+      fileExtension:
+        description: '文件扩展名'
+        required: false
+        default: ''
+        type: string
+      chunkData:
+        description: '分块数据Base64'
+        required: false
+        default: ''
+        type: string
+      fileName:
+        description: '文件名'
+        required: false
+        default: ''
+        type: string
+      base64Content:
+        description: '完整文件Base64'
+        required: false
+        default: ''
+        type: string
 
 jobs:
-  upload-with-auto-number:
+  file-upload:
     runs-on: ubuntu-latest
+    timeout-minutes: 60  # 整个job最多运行1小时
     permissions:
       contents: write
+    env:
+      UPLOAD_DIR: "img"
+      TEMP_DIR: "temp_uploads"
+      COUNTER_FILE: "api/img/cnt.txt"
+      REPO: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
     steps:
-      - name: 核心配置
-        id: config
+      - name: 初始化环境
+        id: init
         run: |
-          echo "UPLOAD_FOLDER=img" >> $GITHUB_ENV
-          # ======================================================
-          echo "BRANCH=main" >> $GITHUB_ENV
-          echo "OWNER=${{ github.repository_owner }}" >> $GITHUB_ENV
-          echo "REPO=${{ github.event.repository.name }}" >> $GITHUB_ENV
-          echo "COUNTER_FILE=api/img/cnt.txt" >> $GITHUB_ENV
-
-      - name: 读取【api/img/cnt.txt】的当前序号
-        id: read-counter
+          echo "OPERATION=${{ github.event.inputs.operation }}" >> $GITHUB_ENV
+          echo "FILE_ID=${{ github.event.inputs.fileId }}" >> $GITHUB_ENV
+          echo "CHUNK_INDEX=${{ github.event.inputs.chunkIndex }}" >> $GITHUB_ENV
+          echo "TOTAL_CHUNKS=${{ github.event.inputs.totalChunks }}" >> $GITHUB_ENV
+          echo "FILE_EXT=${{ github.event.inputs.fileExtension }}" >> $GITHUB_ENV
+          echo "CHUNK_DATA=${{ github.event.inputs.chunkData }}" >> $GITHUB_ENV
+          echo "FILE_NAME=${{ github.event.inputs.fileName }}" >> $GITHUB_ENV
+          echo "BASE64_CONTENT=${{ github.event.inputs.base64Content }}" >> $GITHUB_ENV
+          echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+          
+      # ==================== 单文件上传模式 ====================
+      - name: 处理单文件上传
+        if: env.OPERATION == 'single' && env.BASE64_CONTENT != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 读取新路径的计数文件
-          COUNTER_CONTENT=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}" | jq -r '.content')
-          # Base64解码计数文件内容
-          CURRENT_NUM=$(echo $COUNTER_CONTENT | base64 -d | tr -d '[:space:]')
-          # 计数自增
-          NEW_NUM=$((CURRENT_NUM + 1))
-          echo "当前计数：$CURRENT_NUM → 新文件编号：$NEW_NUM"
-          echo "CURRENT_NUM=$CURRENT_NUM" >> $GITHUB_ENV
-          echo "NEW_NUM=$NEW_NUM" >> $GITHUB_ENV
-
-      - name: 提取文件后缀 + 生成【数字+后缀】最终文件名
-        id: gen-filename
-        run: |
-          ORIGIN_NAME="${{ github.event.client_payload.fileName }}"
-          FILE_EXT=".${ORIGIN_NAME##*.}"
-          FINAL_FILENAME="${{ env.NEW_NUM }}${FILE_EXT}"
-          UPLOAD_PATH="${{ env.UPLOAD_FOLDER }}/${FINAL_FILENAME}"
-          echo "原始文件名：$ORIGIN_NAME → 最终文件名：$FINAL_FILENAME"
-          echo "FINAL_FILENAME=$FINAL_FILENAME" >> $GITHUB_ENV
-          echo "UPLOAD_PATH=$UPLOAD_PATH" >> $GITHUB_ENV
-
-      - name: 上传文件到指定文件夹（仅上传，无删除功能）
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BASE64_CONTENT: ${{ github.event.client_payload.base64Content }}
-        run: |
-          JSON_DATA=$(jq -n \
-            --arg msg "自动编号上传: ${{ env.UPLOAD_PATH }}" \
-            --arg content "$BASE64_CONTENT" \
-            --arg branch "${{ env.BRANCH }}" \
-            '{message: $msg, content: $content, branch: $branch}')
+          echo "=== 单文件上传模式 ==="
+          
+          # 读取计数器文件
+          COUNTER_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}")
+          
+          FILE_CONTENT=$(echo "$COUNTER_RESPONSE" | jq -r '.content // empty')
+          if [ -z "$FILE_CONTENT" ]; then
+            echo "❌ 错误：计数器文件不存在或为空"
+            exit 1
+          fi
+          
+          FILE_NUM=$(echo "$FILE_CONTENT" | base64 -d)
+          if ! [[ $FILE_NUM =~ ^[0-9]+$ ]]; then
+            echo "❌ 错误：计数器文件内容不是有效数字: '$FILE_NUM'"
+            exit 1
+          fi
+          
+          NEW_NUM=$((FILE_NUM + 1))
+          
+          # 生成文件名
+          ORIGIN_NAME="${{ env.FILE_NAME }}"
+          if [[ "$ORIGIN_NAME" == *.* ]]; then
+            FILE_EXT=".${ORIGIN_NAME##*.}"
+          else
+            FILE_EXT=""
+          fi
+          
+          FINAL_FILENAME="$NEW_NUM$FILE_EXT"
+          UPLOAD_PATH="${{ env.UPLOAD_DIR }}/$FINAL_FILENAME"
+          
+          echo "正在上传文件: $FINAL_FILENAME"
+          
+          # 上传文件
           curl -X PUT -s \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            -d "$JSON_DATA" \
-            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.UPLOAD_PATH }}"
-
-      - name: 写回自增后的序号到【api/img/cnt.txt】（完成闭环）
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # 修改：获取新路径计数文件的SHA值（更新文件必须传SHA）
-          COUNTER_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}" | jq -r '.sha')
-          # 将新数字转为Base64编码（GitHub API强制要求）
-          NEW_NUM_BASE64=$(echo -n "${{ env.NEW_NUM }}" | base64)
-          # 更新新路径的计数文件
-          JSON_DATA=$(jq -n \
-            --arg msg "计数自增: ${{ env.CURRENT_NUM }} → ${{ env.NEW_NUM }}" \
-            --arg content "$NEW_NUM_BASE64" \
-            --arg sha "$COUNTER_SHA" \
-            --arg branch "${{ env.BRANCH }}" \
-            '{message: $msg, content: $content, sha: $sha, branch: $branch}')
+            -d "{\"message\":\"上传文件: $FINAL_FILENAME\",\"content\":\"${{ env.BASE64_CONTENT }}\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$UPLOAD_PATH"
+          
+          # 更新计数器
+          COUNTER_SHA=$(echo "$COUNTER_RESPONSE" | jq -r '.sha')
+          NEW_NUM_BASE64=$(echo -n "$NEW_NUM" | base64)
+          
           curl -X PUT -s \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            -d "$JSON_DATA" \
-            "https://api.github.com/repos/${{ env.OWNER }}/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}"
-
-      - name: 上传完成
+            -d "{\"message\":\"更新计数器: $NEW_NUM\",\"content\":\"$NEW_NUM_BASE64\",\"sha\":\"$COUNTER_SHA\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}"
+          
+          echo "✅ 上传成功！"
+          echo "📁 文件名: $FINAL_FILENAME"
+          echo "📍 路径: $UPLOAD_PATH"
+          echo "🔗 Raw URL: https://raw.githubusercontent.com/${{ env.REPO }}/main/$UPLOAD_PATH"
+          echo "🌐 CDN URL: https://cdn.jsdelivr.net/gh/${{ env.REPO }}/$UPLOAD_PATH"
+          
+      # ==================== 开始分块上传 ====================
+      - name: 开始分块上传
+        if: env.OPERATION == 'start'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🎉 上传成功！最终文件名：${{ env.FINAL_FILENAME }}"
-          echo "🎉 文件存储路径：img/${{ env.FINAL_FILENAME }}"
-          echo "🎉 计数文件已更新：api/img/cnt.txt → ${{ env.NEW_NUM }}"
+          echo "=== 开始分块上传 ==="
+          
+          # 验证输入
+          if [ -z "${{ env.TOTAL_CHUNKS }}" ] || [ -z "${{ env.FILE_EXT }}" ]; then
+            echo "❌ 错误：缺少必要参数 (totalChunks, fileExtension)"
+            exit 1
+          fi
+          
+          # 读取计数器文件
+          COUNTER_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}")
+          
+          FILE_CONTENT=$(echo "$COUNTER_RESPONSE" | jq -r '.content // empty')
+          if [ -z "$FILE_CONTENT" ]; then
+            echo "❌ 错误：计数器文件不存在或为空"
+            exit 1
+          fi
+          
+          FILE_NUM=$(echo "$FILE_CONTENT" | base64 -d)
+          if ! [[ $FILE_NUM =~ ^[0-9]+$ ]]; then
+            echo "❌ 错误：计数器文件内容不是有效数字: '$FILE_NUM'"
+            exit 1
+          fi
+          
+          NEW_NUM=$((FILE_NUM + 1))
+          
+          # 创建状态文件
+          TOTAL_CHUNKS=${{ env.TOTAL_CHUNKS }}
+          FILE_EXT="${{ env.FILE_EXT }}"
+          
+          # 初始化所有分块状态为 pending
+          CHUNKS_JSON="{"
+          for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
+            if [ $i -gt 0 ]; then
+              CHUNKS_JSON="$CHUNKS_JSON,"
+            fi
+            CHUNKS_JSON="$CHUNKS_JSON\"$i\":\"pending\""
+          done
+          CHUNKS_JSON="$CHUNKS_JSON}"
+          
+          STATUS_JSON=$(jq -n \
+            --arg fileId "$NEW_NUM" \
+            --arg extension "$FILE_EXT" \
+            --arg totalChunks "$TOTAL_CHUNKS" \
+            --arg startTime "$(date +%s)" \
+            --argjson chunks "$CHUNKS_JSON" \
+            '{
+              fileId: $fileId,
+              extension: $extension,
+              totalChunks: $totalChunks | tonumber,
+              startTime: $startTime | tonumber,
+              chunks: $chunks
+            }')
+          
+          STATUS_BASE64=$(echo -n "$STATUS_JSON" | base64 -w 0)
+          
+          # 创建状态文件
+          STATUS_FILE="${{ env.TEMP_DIR }}/TEMPMETA_${NEW_NUM}.json"
+          echo "创建状态文件: $STATUS_FILE"
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"开始分块上传: $NEW_NUM\",\"content\":\"$STATUS_BASE64\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE"
+          
+          # 立即更新计数器（避免冲突）
+          COUNTER_SHA=$(echo "$COUNTER_RESPONSE" | jq -r '.sha')
+          NEW_NUM_BASE64=$(echo -n "$NEW_NUM" | base64 -w 0)
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"预分配文件编号: $NEW_NUM\",\"content\":\"$NEW_NUM_BASE64\",\"sha\":\"$COUNTER_SHA\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.COUNTER_FILE }}"
+          
+          echo "✅ 开始上传成功！"
+          echo "📄 文件ID: $NEW_NUM"
+          echo "📎 扩展名: $FILE_EXT"
+          echo "🔢 总分块数: $TOTAL_CHUNKS"
+          echo "📋 状态文件: $STATUS_FILE"
+          
+      # ==================== 上传分块 ====================
+      - name: 上传分块
+        if: env.OPERATION == 'chunk'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== 上传分块 ==="
+          
+          # 验证输入
+          if [ -z "${{ env.FILE_ID }}" ] || [ -z "${{ env.CHUNK_INDEX }}" ] || [ -z "${{ env.CHUNK_DATA }}" ]; then
+            echo "❌ 错误：缺少必要参数 (fileId, chunkIndex, chunkData)"
+            exit 1
+          fi
+          
+          FILE_ID="${{ env.FILE_ID }}"
+          CHUNK_INDEX="${{ env.CHUNK_INDEX }}"
+          CHUNK_DATA="${{ env.CHUNK_DATA }}"
+          START_TIME="${{ env.START_TIME }}"
+          MAX_WAIT=3600  # 1小时
+          
+          # 循环等待直到可以上传
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            ELAPSED=$((CURRENT_TIME - START_TIME))
+            
+            # 超时检查
+            if [ $ELAPSED -gt $MAX_WAIT ]; then
+              echo "❌ 等待超时（1小时），清理临时文件并退出"
+              
+              # 清理自己的临时文件（如果存在）
+              TEMP_CHUNK_FILE="${{ env.TEMP_DIR }}/TEMPCHUNK_${FILE_ID}_${CHUNK_INDEX}.dat"
+              CHUNK_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${{ env.REPO }}/contents/$TEMP_CHUNK_FILE")
+              
+              if ! echo "$CHUNK_RESPONSE" | grep -q '"message":"Not Found"'; then
+                CHUNK_SHA=$(echo "$CHUNK_RESPONSE" | jq -r '.sha // empty')
+                if [ -n "$CHUNK_SHA" ] && [ "$CHUNK_SHA" != "null" ]; then
+                  curl -X DELETE -s \
+                    -H "Authorization: token $GITHUB_TOKEN" \
+                    -H "Accept: application/vnd.github+json" \
+                    -d "{\"message\":\"清理超时分块\",\"sha\":\"$CHUNK_SHA\",\"branch\":\"main\"}" \
+                    "https://api.github.com/repos/${{ env.REPO }}/contents/$TEMP_CHUNK_FILE"
+                  echo "已清理分块 $CHUNK_INDEX 的临时文件"
+                fi
+              fi
+              
+              exit 1
+            fi
+            
+            # 检查状态文件
+            STATUS_FILE="${{ env.TEMP_DIR }}/TEMPMETA_${FILE_ID}.json"
+            STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
+            
+            # 如果状态文件不存在，说明上传已取消或已完成
+            if echo "$STATUS_RESPONSE" | grep -q '"message":"Not Found"'; then
+              echo "⏳ 状态文件不存在，等待5秒..."
+              sleep 5
+              continue
+            fi
+            
+            STATUS_CONTENT=$(echo "$STATUS_RESPONSE" | jq -r '.content // empty' | base64 -d)
+            if [ -z "$STATUS_CONTENT" ]; then
+              echo "⏳ 状态文件内容为空，等待5秒..."
+              sleep 5
+              continue
+            fi
+            
+            # 检查当前分块状态
+            CURRENT_STATUS=$(echo "$STATUS_CONTENT" | jq -r ".chunks[\"$CHUNK_INDEX\"] // \"pending\"")
+            
+            if [ "$CURRENT_STATUS" = "completed" ]; then
+              echo "✅ 分块 $CHUNK_INDEX 已经完成上传"
+              break
+            elif [ "$CURRENT_STATUS" = "uploading" ]; then
+              echo "⏳ 分块 $CHUNK_INDEX 正在上传中，等待10秒..."
+              sleep 10
+              continue
+            fi
+            
+            # 检查上一个分块
+            if [ $CHUNK_INDEX -eq 0 ]; then
+              # 第0块：只要不是 uploading 就可以开始
+              if [ "$CURRENT_STATUS" = "pending" ]; then
+                echo "✅ 可以上传分块 0（第一个分块）"
+                break
+              else
+                echo "⏳ 分块 0 状态为 $CURRENT_STATUS，等待5秒..."
+                sleep 5
+              fi
+            else
+              # 其他块：检查上一个分块是否完成
+              PREV_INDEX=$((CHUNK_INDEX - 1))
+              PREV_STATUS=$(echo "$STATUS_CONTENT" | jq -r ".chunks[\"$PREV_INDEX\"] // \"pending\"")
+              
+              if [ "$PREV_STATUS" = "completed" ]; then
+                echo "✅ 上一个分块 $PREV_INDEX 已完成，可以上传分块 $CHUNK_INDEX"
+                break
+              else
+                echo "⏳ 等待上一个分块 $PREV_INDEX 完成（当前状态: $PREV_STATUS），已等待 ${ELAPSED}秒"
+                sleep 10
+              fi
+            fi
+          done
+          
+          # 标记为正在上传
+          echo "标记分块 $CHUNK_INDEX 为 uploading..."
+          STATUS_SHA=$(echo "$STATUS_RESPONSE" | jq -r '.sha // empty')
+          
+          # 更新状态为 uploading
+          UPDATED_STATUS=$(echo "$STATUS_CONTENT" | jq ".chunks[\"$CHUNK_INDEX\"] = \"uploading\"")
+          UPDATED_BASE64=$(echo -n "$UPDATED_STATUS" | base64 -w 0)
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"开始上传分块 $CHUNK_INDEX\",\"content\":\"$UPDATED_BASE64\",\"sha\":\"$STATUS_SHA\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE"
+          
+          # 上传分块数据
+          echo "上传分块 $CHUNK_INDEX 的数据..."
+          TEMP_CHUNK_FILE="${{ env.TEMP_DIR }}/TEMPCHUNK_${FILE_ID}_${CHUNK_INDEX}.dat"
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"分块 $CHUNK_INDEX\",\"content\":\"$CHUNK_DATA\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$TEMP_CHUNK_FILE"
+          
+          # 标记为已完成
+          echo "标记分块 $CHUNK_INDEX 为 completed..."
+          
+          # 重新读取状态文件（SHA可能已变）
+          STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
+          
+          STATUS_CONTENT=$(echo "$STATUS_RESPONSE" | jq -r '.content // empty' | base64 -d)
+          STATUS_SHA=$(echo "$STATUS_RESPONSE" | jq -r '.sha // empty')
+          
+          UPDATED_STATUS=$(echo "$STATUS_CONTENT" | jq ".chunks[\"$CHUNK_INDEX\"] = \"completed\"")
+          UPDATED_BASE64=$(echo -n "$UPDATED_STATUS" | base64 -w 0)
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"完成分块 $CHUNK_INDEX\",\"content\":\"$UPDATED_BASE64\",\"sha\":\"$STATUS_SHA\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE"
+          
+          echo "✅ 分块 $CHUNK_INDEX 上传完成"
+          
+      # ==================== 完成上传 ====================
+      - name: 完成分块上传
+        if: env.OPERATION == 'complete'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== 完成分块上传 ==="
+          
+          if [ -z "${{ env.FILE_ID }}" ]; then
+            echo "❌ 错误：缺少必要参数 (fileId)"
+            exit 1
+          fi
+          
+          FILE_ID="${{ env.FILE_ID }}"
+          
+          # 检查状态文件
+          STATUS_FILE="${{ env.TEMP_DIR }}/TEMPMETA_${FILE_ID}.json"
+          STATUS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE")
+          
+          if echo "$STATUS_RESPONSE" | grep -q '"message":"Not Found"'; then
+            echo "❌ 错误：状态文件不存在，上传可能已取消"
+            exit 1
+          fi
+          
+          STATUS_CONTENT=$(echo "$STATUS_RESPONSE" | jq -r '.content // empty' | base64 -d)
+          if [ -z "$STATUS_CONTENT" ]; then
+            echo "❌ 错误：状态文件内容为空"
+            exit 1
+          fi
+          
+          TOTAL_CHUNKS=$(echo "$STATUS_CONTENT" | jq -r '.totalChunks')
+          FILE_EXT=$(echo "$STATUS_CONTENT" | jq -r '.extension')
+          
+          echo "检查 $TOTAL_CHUNKS 个分块状态..."
+          
+          # 检查所有分块状态
+          ALL_COMPLETED=true
+          for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
+            STATUS=$(echo "$STATUS_CONTENT" | jq -r ".chunks[\"$i\"] // \"pending\"")
+            if [ "$STATUS" != "completed" ]; then
+              echo "❌ 分块 $i 状态为 $STATUS，未完成"
+              ALL_COMPLETED=false
+            fi
+          done
+          
+          if [ "$ALL_COMPLETED" != "true" ]; then
+            echo "❌ 错误：还有分块未完成，无法合并"
+            exit 1
+          fi
+          
+          echo "✅ 所有分块已完成，开始合并..."
+          
+          # 创建临时文件合并所有分块
+          TEMP_FILE="/tmp/merged_${FILE_ID}"
+          rm -f "$TEMP_FILE"
+          
+          for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
+            CHUNK_FILE="${{ env.TEMP_DIR }}/TEMPCHUNK_${FILE_ID}_${i}.dat"
+            echo "下载分块 $i..."
+            
+            CHUNK_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$CHUNK_FILE")
+            
+            CHUNK_CONTENT=$(echo "$CHUNK_RESPONSE" | jq -r '.content // empty')
+            if [ -z "$CHUNK_CONTENT" ]; then
+              echo "❌ 错误：分块 $i 数据缺失"
+              exit 1
+            fi
+            
+            echo "$CHUNK_CONTENT" | base64 -d >> "$TEMP_FILE"
+            echo "分块 $i 合并完成"
+          done
+          
+          # 上传最终文件
+          FINAL_FILENAME="${FILE_ID}${FILE_EXT}"
+          FINAL_PATH="${{ env.UPLOAD_DIR }}/${FINAL_FILENAME}"
+          MERGED_BASE64=$(base64 -w 0 "$TEMP_FILE")
+          
+          echo "上传最终文件: $FINAL_FILENAME"
+          
+          curl -X PUT -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d "{\"message\":\"上传合并文件: $FINAL_FILENAME\",\"content\":\"$MERGED_BASE64\",\"branch\":\"main\"}" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/$FINAL_PATH"
+          
+          # 清理临时文件
+          echo "清理临时文件..."
+          
+          # 清理分块数据文件
+          for i in $(seq 0 $((TOTAL_CHUNKS - 1))); do
+            CHUNK_FILE="${{ env.TEMP_DIR }}/TEMPCHUNK_${FILE_ID}_${i}.dat"
+            CHUNK_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$CHUNK_FILE")
+            
+            if ! echo "$CHUNK_RESPONSE" | grep -q '"message":"Not Found"'; then
+              CHUNK_SHA=$(echo "$CHUNK_RESPONSE" | jq -r '.sha // empty')
+              if [ -n "$CHUNK_SHA" ] && [ "$CHUNK_SHA" != "null" ]; then
+                curl -X DELETE -s \
+                  -H "Authorization: token $GITHUB_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  -d "{\"message\":\"清理分块 $i\",\"sha\":\"$CHUNK_SHA\",\"branch\":\"main\"}" \
+                  "https://api.github.com/repos/${{ env.REPO }}/contents/$CHUNK_FILE"
+                echo "清理分块 $i 文件"
+              fi
+            fi
+          done
+          
+          # 清理状态文件
+          STATUS_SHA=$(echo "$STATUS_RESPONSE" | jq -r '.sha // empty')
+          if [ -n "$STATUS_SHA" ] && [ "$STATUS_SHA" != "null" ]; then
+            curl -X DELETE -s \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -d "{\"message\":\"清理状态文件\",\"sha\":\"$STATUS_SHA\",\"branch\":\"main\"}" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/$STATUS_FILE"
+            echo "清理状态文件"
+          fi
+          
+          echo "✅ 文件上传完成！"
+          echo "📁 文件名: $FINAL_FILENAME"
+          echo "📍 路径: $FINAL_PATH"
+          echo "🔗 Raw URL: https://raw.githubusercontent.com/${{ env.REPO }}/main/$FINAL_PATH"
+          echo "🌐 CDN URL: https://cdn.jsdelivr.net/gh/${{ env.REPO }}/$FINAL_PATH"
+          
+          # 触发 GitHub Pages 部署
+          echo "触发 GitHub Pages 部署..."
+          
+          # 方法1: 如果仓库启用了 Pages 自动部署，会自动触发
+          echo "GitHub Pages 会自动检测到新文件并部署"
+          
+          # 方法2: 推送空提交触发（如果需要）
+          # echo "推送空提交触发 Pages 构建..."
+          # git config --global user.name 'GitHub Actions'
+          # git config --global user.email 'actions@github.com'
+          # git clone https://x-access-token:$GITHUB_TOKEN@github.com/${{ env.REPO }}.git repo
+          # cd repo
+          # git commit --allow-empty -m "Trigger Pages rebuild for new file: $FINAL_FILENAME"
+          # git push origin main
+          
+          echo "✅ GitHub Pages 部署已触发"
+          
+      # ==================== 清理过期文件 ====================
+      - name: 清理过期临时文件
+        if: env.OPERATION == 'cleanup'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== 清理过期临时文件 ==="
+          
+          CURRENT_TIME=$(date +%s)
+          MAX_AGE=3600  # 1小时
+          
+          # 获取 temp_uploads 目录内容
+          TEMP_DIR_CONTENT=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.TEMP_DIR }}")
+          
+          # 清理状态文件
+          echo "检查状态文件..."
+          echo "$TEMP_DIR_CONTENT" | jq -r '.[] | select(.name | startswith("TEMPMETA_")) | .name' | while read -r FILE; do
+            echo "检查文件: $FILE"
+            
+            FILE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.TEMP_DIR }}/$FILE")
+            
+            FILE_CONTENT=$(echo "$FILE_RESPONSE" | jq -r '.content // empty' | base64 -d)
+            if [ -n "$FILE_CONTENT" ]; then
+              START_TIME=$(echo "$FILE_CONTENT" | jq -r '.startTime // 0')
+              AGE=$((CURRENT_TIME - START_TIME))
+              
+              if [ $AGE -gt $MAX_AGE ]; then
+                echo "清理过期状态文件: $FILE (创建于 ${AGE}秒前)"
+                FILE_SHA=$(echo "$FILE_RESPONSE" | jq -r '.sha // empty')
+                
+                if [ -n "$FILE_SHA" ] && [ "$FILE_SHA" != "null" ]; then
+                  curl -X DELETE -s \
+                    -H "Authorization: token $GITHUB_TOKEN" \
+                    -H "Accept: application/vnd.github+json" \
+                    -d "{\"message\":\"清理过期状态文件\",\"sha\":\"$FILE_SHA\",\"branch\":\"main\"}" \
+                    "https://api.github.com/repos/${{ env.REPO }}/contents/${{ env.TEMP_DIR }}/$FILE"
+                  
+                  # 提取文件ID
+                  FILE_ID=$(echo "$FILE" | sed 's/TEMPMETA_//' | sed 's/.json//')
+                  
+                  # 清理对应的分块文件
+                  echo "清理文件ID $FILE_ID 的分块文件..."
+                  for i in $(seq 0 99); do  # 假设最多100个分块
+                    CHUNK_FILE="${{ env.TEMP_DIR }}/TEMPCHUNK_${FILE_ID}_${i}.dat"
+                    CHUNK_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                      "https://api.github.com/repos/${{ env.REPO }}/contents/$CHUNK_FILE")
+                    
+                    if ! echo "$CHUNK_RESPONSE" | grep -q '"message":"Not Found"'; then
+                      CHUNK_SHA=$(echo "$CHUNK_RESPONSE" | jq -r '.sha // empty')
+                      if [ -n "$CHUNK_SHA" ] && [ "$CHUNK_SHA" != "null" ]; then
+                        curl -X DELETE -s \
+                          -H "Authorization: token $GITHUB_TOKEN" \
+                          -H "Accept: application/vnd.github+json" \
+                          -d "{\"message\":\"清理过期分块\",\"sha\":\"$CHUNK_SHA\",\"branch\":\"main\"}" \
+                          "https://api.github.com/repos/${{ env.REPO }}/contents/$CHUNK_FILE"
+                      fi
+                    fi
+                  done
+                fi
+              else
+                echo "保留状态文件: $FILE (创建于 ${AGE}秒前)"
+              fi
+            fi
+          done
+          
+          echo "✅ 过期文件清理完成"
