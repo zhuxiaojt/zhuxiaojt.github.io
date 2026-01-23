@@ -496,18 +496,38 @@ jobs:
             echo "分块 $i 合并完成"
           done
           
-          # 4. 上传最终文件
+          # 4. 准备上传数据到临时文件（避免命令行参数过长）
           FINAL_FILENAME="${FILE_ID}${FILE_EXT}"
           FINAL_PATH="${{ env.UPLOAD_DIR }}/${FINAL_FILENAME}"
+          
+          echo "正在编码文件为Base64..."
           MERGED_BASE64=$(base64 -w 0 "$TEMP_FILE")
           
-          echo "上传最终文件: $FINAL_FILENAME"
+          # 创建JSON数据文件
+          JSON_DATA=$(jq -n \
+            --arg msg "上传合并文件: $FINAL_FILENAME" \
+            --arg content "$MERGED_BASE64" \
+            --arg branch "main" \
+            '{message: $msg, content: $content, branch: $branch}')
           
+          # 将JSON数据写入临时文件
+          JSON_FILE="/tmp/upload_${FILE_ID}.json"
+          echo "$JSON_DATA" > "$JSON_FILE"
+          
+          echo "上传最终文件: $FINAL_FILENAME"
+          echo "文件大小: $(stat -c%s "$TEMP_FILE") 字节"
+          echo "Base64后大小: $(echo -n "$MERGED_BASE64" | wc -c) 字符"
+          
+          # 使用临时文件上传，避免命令行参数过长
           curl -X PUT -s \
             -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            -d "{\"message\":\"上传合并文件: $FINAL_FILENAME\",\"content\":\"$MERGED_BASE64\",\"branch\":\"main\"}" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$JSON_FILE" \
             "https://api.github.com/repos/${{ env.REPO }}/contents/$FINAL_PATH"
+          
+          # 清理临时JSON文件
+          rm -f "$JSON_FILE"
           
           # 5. 清理临时文件
           echo "清理临时文件..."
@@ -547,14 +567,6 @@ jobs:
           echo "📍 路径: $FINAL_PATH"
           echo "🔗 Raw URL: https://raw.githubusercontent.com/${{ env.REPO }}/main/$FINAL_PATH"
           echo "🌐 CDN URL: https://cdn.jsdelivr.net/gh/${{ env.REPO }}/$FINAL_PATH"
-          
-          # 触发 GitHub Pages 部署
-          echo "触发 GitHub Pages 部署..."
-          
-          # 方法1: 如果仓库启用了 Pages 自动部署，会自动触发
-          echo "GitHub Pages 会自动检测到新文件并部署"
-          
-          echo "✅ GitHub Pages 部署已触发"
           
       # ==================== 清理过期文件 ====================
       - name: 清理过期临时文件
