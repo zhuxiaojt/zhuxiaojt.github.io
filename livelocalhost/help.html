@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>liveLocalhost - 轻量级本地 HTTP 服务器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        nav {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            padding: 0;
+        }
+
+        nav ul li {
+            margin: 0;
+        }
+
+        nav ul li a {
+            display: block;
+            padding: 15px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        nav ul li a:hover {
+            background-color: #f0f0f0;
+            color: #667eea;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        section:nth-child(even) {
+            background-color: white;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #333;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .feature-card i {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h4 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .usage-guide {
+            background-color: #f9f9f9;
+            padding: 40px;
+            border-radius: 10px;
+            margin-top: 40px;
+        }
+
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .download-section {
+            text-align: center;
+        }
+
+        .download-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .download-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .download-button.secondary:hover {
+            background: #f0f0f0;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .limitation {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        footer p {
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            nav ul li a {
+                padding: 10px 20px;
+            }
+
+            section {
+                padding: 60px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>liveLocalhost</h1>
+            <p>轻量级本地 HTTP 服务器，为开发和测试而生</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#home">首页</a></li>
+                <li><a href="#usage">使用指南</a></li>
+                <li><a href="#architecture">技术架构</a></li>
+            </ul>
+        </div>
+    </nav>
+    <section id="usage">
+        <div class="container">
+            <h2>使用指南</h2>
+            <h3 style="margin-top: 40px;">基本用法</h3>
+                <div class="code-block">
+                    # 基本用法：指定目录和端口
+                    <br>
+                    liveLocalhost.exe &lt;目录路径&gt; [端口]
+                    <br>
+                    # 示例 1：使用默认端口 8080
+                    <br>
+                    liveLocalhost.exe D:\website
+                    <br>
+                    # 示例 2：指定端口 3000
+                    <br>
+                    liveLocalhost.exe D:\website 3000
+                </div>
+
+                <h3 style="margin-top: 40px;">高级选项</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>自定义 404 页面</strong>：在网站根目录创建 <code>404.html</code> 文件，当资源不存在时会自动返回该页面</li>
+                    <li><strong>自定义 403 页面</strong>：在网站根目录创建 <code>403.html</code> 文件，当访问被禁止时会自动返回该页面</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture">
+        <div class="container">
+            <h2>技术架构</h2>
+            
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>核心组件</h3>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>服务器启动模块</strong>：处理命令行参数，请求管理员权限，启动 TCP 服务器</li>
+                        <li><strong>请求处理模块</strong>：解析 HTTP 请求，处理文件路径，返回静态资源</li>
+                        <li><strong>错误处理模块</strong>：处理各种错误情况，返回适当的错误响应</li>
+                        <li><strong>多线程模块</strong>：使用线程池处理并发请求</li>
+                    </ul>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>技术栈</h3>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>编程语言</strong>：Python 3.x</li>
+                        <li><strong>核心库</strong>：socket、threading、os、re、ctypes</li>
+                        <li><strong>打包工具</strong>：PyInstaller（用于生成可执行文件）</li>
+                        <li><strong>HTTP 协议</strong>：HTTP/1.1</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 liveLocalhost. 保留所有权利。</p>
+            <p>轻量级本地 HTTP 服务器，为开发和测试而生。</p>
+            <p style="color:gray;font-size:12px;"><br>本网页部分内容由AI生成，请注意甄别。</p>
+        </div>
+    </footer>
+</body>
+</html>
