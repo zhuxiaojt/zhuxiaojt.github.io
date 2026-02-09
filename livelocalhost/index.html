@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>liveLocalhost - 轻量级本地 HTTP 服务器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+
+        nav {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            padding: 0;
+        }
+
+        nav ul li {
+            margin: 0;
+        }
+
+        nav ul li a {
+            display: block;
+            padding: 15px 25px;
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        nav ul li a:hover {
+            background-color: #f0f0f0;
+            color: #667eea;
+        }
+
+        section {
+            padding: 80px 0;
+        }
+
+        section:nth-child(even) {
+            background-color: white;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 40px;
+            text-align: center;
+            color: #333;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #444;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .feature-card i {
+            font-size: 2.5rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h4 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .usage-guide {
+            background-color: #f9f9f9;
+            padding: 40px;
+            border-radius: 10px;
+            margin-top: 40px;
+        }
+
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+
+        .download-section {
+            text-align: center;
+        }
+
+        .download-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 10px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .download-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-button.secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .download-button.secondary:hover {
+            background: #f0f0f0;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .limitation {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        footer {
+            background-color: #333;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        footer p {
+            margin: 10px 0;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.5rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            nav ul li a {
+                padding: 10px 20px;
+            }
+
+            section {
+                padding: 60px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>liveLocalhost</h1>
+            <p>轻量级本地 HTTP 服务器，为开发和测试而生</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#home">首页</a></li>
+                <li><a href="#features">功能特点</a></li>
+                <li><a href="#usage">使用指南</a></li>
+                <li><a href="#architecture">技术架构</a></li>
+                <li><a href="#download">下载</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section id="home">
+        <div class="container">
+            <h2>关于 liveLocalhost</h2>
+            <p style="text-align: center; font-size: 1.2rem; margin-bottom: 40px;">为本地开发和测试提供简单、高效的 HTTP 服务器解决方案</p>
+            
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>为什么选择 liveLocalhost？</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">✓</span>
+                            <span><strong>简单易用</strong>：只需一行命令即可启动服务器</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">✓</span>
+                            <span><strong>轻量高效</strong>：核心代码仅 137 行，启动迅速，资源占用低</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">✓</span>
+                            <span><strong>功能完备</strong>：支持多种文件类型，提供基本的错误处理</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">✓</span>
+                            <span><strong>无需安装</strong>：提供 Windows 可执行文件，双击即可运行</span>
+                        </li>
+                    </ul>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>适用场景</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">📁</span>
+                            <span><strong>前端开发</strong>：本地预览 HTML、CSS、JavaScript 项目</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">🧪</span>
+                            <span><strong>测试环境</strong>：本地测试静态网站和 API 响应</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">🔗</span>
+                            <span><strong>文件共享</strong>：在局域网内快速共享文件</span>
+                        </li>
+                        <li style="margin-bottom: 15px; display: flex; align-items: center;">
+                            <span style="color: #667eea; font-size: 1.5rem; margin-right: 10px;">📚</span>
+                            <span><strong>学习研究</strong>：了解 HTTP 服务器原理和网络编程</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features">
+        <div class="container">
+            <h2>功能特点</h2>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>静态文件服务</h4>
+                    <p>支持多种文件类型的静态资源访问，包括 HTML、CSS、JS、图片、视频、音频等。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>目录浏览</h4>
+                    <p>当访问目录时，自动查找并返回 index.html 文件，方便网站开发和测试。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>错误处理</h4>
+                    <p>提供基本的错误处理机制，包括 404、403 和 500 等错误状态。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>多线程处理</h4>
+                    <p>使用多线程技术处理并发请求，提高服务器性能，支持多个客户端同时访问。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>管理员权限请求</h4>
+                    <p>自动检测并请求管理员权限，确保服务器可以正常绑定端口和访问文件。</p>
+                </div>
+                <div class="feature-card">
+                    <h4>自定义端口</h4>
+                    <p>支持用户指定服务器端口，默认使用 8080 端口，满足不同场景的需求。</p>
+                </div>
+            </div>
+
+            <div class="limitation">
+                <h4>当前功能限制</h4>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="color: #856404; font-size: 1rem; margin-right: 10px;">⚠️</span>
+                        <span>暂不支持 POST 等其它 HTTP 方法，仅支持 GET 请求</span>
+                    </li>
+                    <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="color: #856404; font-size: 1rem; margin-right: 10px;">⚠️</span>
+                        <span>目前仅提供 Windows 系统的可执行文件</span>
+                    </li>
+                    <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="color: #856404; font-size: 1rem; margin-right: 10px;">⚠️</span>
+                        <span>虽然我们有基本的错误处理，但是较为基础，建议仅在本地开发测试等非生产场景中使用，以防受到攻击</span>
+                    </li>
+                    <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="color: #856404; font-size: 1rem; margin-right: 10px;">⚠️</span>
+                        <span>暂不提供详细错误信息和日志</span>
+                    </li>
+                    <li style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="color: #856404; font-size: 1rem; margin-right: 10px;">⚠️</span>
+                        <span>必须使用管理员权限才能运行此程序</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="usage">
+        <div class="container">
+            <h2>使用指南</h2>
+            
+            <div class="usage-guide">
+                <h3>安装方法</h3>
+                <div style="margin-bottom: 30px;">
+                    <h4>Windows 系统</h4>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>直接下载 <code>liveLocalhost.exe</code> 可执行文件</li>
+                        <li>无需安装 Python 环境，双击即可运行</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Python 脚本</h4>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li>提供 Python 源代码，用于查看实现细节</li>
+                        <li>可在本地环境中运行和修改</li>
+                    </ul>
+                </div>
+
+                <h3 style="margin-top: 40px;">基本用法</h3>
+                <div class="code-block">
+                    # 基本用法：指定目录和端口
+                    <br>
+                    liveLocalhost.exe &lt;目录路径&gt; [端口]
+                    <br>
+                    # 示例 1：使用默认端口 8080
+                    <br>
+                    liveLocalhost.exe D:\website
+                    <br>
+                    # 示例 2：指定端口 3000
+                    <br>
+                    liveLocalhost.exe D:\website 3000
+                </div>
+
+                <h3 style="margin-top: 40px;">高级选项</h3>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li><strong>自定义 404 页面</strong>：在网站根目录创建 <code>404.html</code> 文件，当资源不存在时会自动返回该页面</li>
+                    <li><strong>自定义 403 页面</strong>：在网站根目录创建 <code>403.html</code> 文件，当访问被禁止时会自动返回该页面</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture">
+        <div class="container">
+            <h2>技术架构</h2>
+            
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 30px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>核心组件</h3>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>服务器启动模块</strong>：处理命令行参数，请求管理员权限，启动 TCP 服务器</li>
+                        <li><strong>请求处理模块</strong>：解析 HTTP 请求，处理文件路径，返回静态资源</li>
+                        <li><strong>错误处理模块</strong>：处理各种错误情况，返回适当的错误响应</li>
+                        <li><strong>多线程模块</strong>：使用线程池处理并发请求</li>
+                    </ul>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h3>技术栈</h3>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        <li><strong>编程语言</strong>：Python 3.x</li>
+                        <li><strong>核心库</strong>：socket、threading、os、re、ctypes</li>
+                        <li><strong>打包工具</strong>：PyInstaller（用于生成可执行文件）</li>
+                        <li><strong>HTTP 协议</strong>：HTTP/1.1</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="download">
+        <div class="container">
+            <h2>下载</h2>
+            
+            <div class="download-section">
+                <p style="font-size: 1.2rem; margin-bottom: 40px;">选择适合您系统的版本下载</p>
+                
+                <a href="https://raw.githubusercontent.com/zhuxiaojt/liveLocalhost/refs/heads/main/1.0.0/liveLocalhost.exe" class="download-button">Windows 可执行文件（携带版）</a>
+                <a href="https://112893601914032128.abvod.cn/straight/liveLocalhost1.0.0_Setup.exe" class="download-button secondary">Windows 可执行文件（安装版）</a>
+                <a href="https://raw.githubusercontent.com/zhuxiaojt/liveLocalhost/refs/heads/main/1.0.0/liveLocalhost.py" class="download-button secondary">Python 脚本（不推荐）</a>
+                
+                <div style="margin-top: 40px;">
+                    <h3>系统要求</h3>
+                    <ul style="list-style: none; padding: 0; margin-top: 20px;">
+                        <li style="margin-bottom: 10px;"><strong>Windows 可执行文件</strong>：Windows 10 及以上版本</li>
+                        <li style="margin-bottom: 10px;"><strong>Python 脚本</strong>：需要 Python 3.x 环境，建议仅用于查看和修改源代码，或是在 Windows 10 以下的版本中使用</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 liveLocalhost. 保留所有权利。</p>
+            <p>轻量级本地 HTTP 服务器，为开发和测试而生。</p>
+            <p style="color:gray;font-size:12px;"><br>本网页部分内容由AI生成，请注意甄别。</p>
+        </div>
+    </footer>
+</body>
+</html>
