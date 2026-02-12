@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interconnect Everythings - 跨设备互联工具</title>
+    <link rel="icon" href="./icon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="./icon.ico" type="image/x-icon">
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* 现代字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            overflow-x: hidden;
+        }
+        
+        /* 容器 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* 头部区域 */
+        header {
+            background: #ffffff;
+            color: #333;
+            padding: 60px 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed, #ec4899);
+        }
+        
+        .logo {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+            /* 禁用图像平滑，确保小图标显示清晰 */
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -o-crisp-edges;
+            -ms-interpolation-mode: nearest-neighbor;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
+        }
+        
+        header h1 {
+            font-size: 2.8em;
+            margin-bottom: 20px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        
+        header p {
+            font-size: 1.2em;
+            max-width: 700px;
+            margin: 0 auto;
+            color: #64748b;
+            font-weight: 400;
+        }
+        
+        /* 主要内容区域 */
+        main {
+            padding: 60px 0;
+        }
+        
+        /* 章节样式 */
+        section {
+            background: white;
+            margin: 40px 0;
+            padding: 50px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        
+        h2 {
+            color: #1e293b;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed);
+            border-radius: 3px;
+        }
+        
+        h3 {
+            color: #334155;
+            margin: 30px 0 20px;
+            font-size: 1.4em;
+            font-weight: 500;
+        }
+        
+        /* 介绍部分 */
+        .intro-content {
+            font-size: 1.05em;
+            line-height: 1.8;
+            color: #475569;
+        }
+        
+        .intro-content p {
+            margin-bottom: 20px;
+        }
+        
+        /* 功能特点 */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: #4f46e5;
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.1);
+        }
+        
+        .feature-card h4 {
+            color: #1e293b;
+            margin-bottom: 15px;
+            font-size: 1.15em;
+            font-weight: 600;
+        }
+        
+        .feature-card p {
+            color: #64748b;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        
+        /* 应用场景 */
+        .scenarios {
+            margin: 40px 0;
+        }
+        
+        .scenario-item {
+            margin: 20px 0;
+            padding: 25px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+        
+        .scenario-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            border-color: #4f46e5;
+        }
+        
+        .scenario-item h4 {
+            color: #1e293b;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .scenario-item p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        /* 系统要求 */
+        .system-requirements {
+            background: #f8fafc;
+            padding: 35px;
+            border-radius: 8px;
+            margin: 40px 0;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .system-requirements ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .system-requirements li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            color: #475569;
+        }
+        
+        .system-requirements li:last-child {
+            border-bottom: none;
+        }
+        
+        /* 连接故障排查 */
+        .troubleshooting {
+            background: #fffbeb;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 30px 0;
+            border: 1px solid #fef3c7;
+        }
+        
+        .troubleshooting h4 {
+            color: #92400e;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .troubleshooting p {
+            color: #b45309;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .troubleshooting ul {
+            list-style: disc;
+            padding-left: 20px;
+            color: #b45309;
+        }
+        
+        .troubleshooting li {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        /* 下载部分 */
+        .download-section {
+            text-align: center;
+        }
+        
+        .download-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        
+        .download-btn {
+            display: inline-block;
+            padding: 18px 36px;
+            background: #4f46e5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        
+        .download-btn:hover {
+            background: #4338ca;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
+        }
+        
+        .download-btn.secondary {
+            background: #f1f5f9;
+            color: #334155;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .download-btn.secondary:hover {
+            background: #e2e8f0;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .download-info {
+            font-size: 0.95em;
+            color: #64748b;
+            margin-top: 30px;
+        }
+        
+        /* 页脚 */
+        footer {
+            background: #1e293b;
+            color: white;
+            text-align: center;
+            padding: 50px 0;
+            margin-top: 80px;
+        }
+        
+        footer h3 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+        
+        footer p {
+            color: #94a3b8;
+            margin: 10px 0;
+        }
+        
+        footer .copyright {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #64748b;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            header {
+                padding: 40px 0;
+            }
+            
+            header h1 {
+                font-size: 2.2em;
+            }
+            
+            header p {
+                font-size: 1.1em;
+                padding: 0 20px;
+            }
+            
+            section {
+                padding: 30px 20px;
+                margin: 30px 0;
+            }
+            
+            h2 {
+                font-size: 1.6em;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .feature-card {
+                padding: 25px;
+            }
+            
+            .download-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 20px;
+            }
+            
+            .download-btn {
+                width: 90%;
+                text-align: center;
+            }
+            
+            .system-requirements {
+                padding: 25px;
+            }
+            
+            .scenario-item {
+                padding: 20px;
+            }
+            
+            footer {
+                padding: 40px 20px;
+            }
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="./icon.png" alt="Interconnect Everythings Logo" class="logo">
+        <h1>Interconnect Everythings</h1>
+        <p>一款功能强大的跨设备互联工具，让您的多台电脑无缝协作</p>
+    </header>
+    
+    <main>
+        <div class="container">
+            <!-- 项目介绍 -->
+            <section id="intro">
+                <h2>项目介绍</h2>
+                <div class="intro-content">
+                    <p>Interconnect Everythings 是一款专为提高工作效率而设计的跨设备互联工具，通过局域网连接，实现多台电脑之间的文件传输、剪贴板共享和实时消息传递。无论是办公室内的多台电脑，还是家庭网络中的设备，都能轻松实现互联互通。</p>
+                    <p>本工具采用先进的TCP通信技术，确保数据传输的稳定性和安全性。界面简洁直观，操作简单易懂，让您无需专业知识即可享受跨设备协作的便利。</p>
+                </div>
+            </section>
+            
+            <!-- 核心功能 -->
+            <section id="features">
+                <h2>核心功能</h2>
+                <div class="features">
+                    <div class="feature-card">
+                        <h4>文件传输</h4>
+                        <p>支持多文件同时传输，实时显示传输进度，无需依赖外部存储设备或云服务，快速安全地在设备间共享文件。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>剪贴板共享</h4>
+                        <p>自动同步多设备间的剪贴板内容，支持文本、图片和文件路径，让您在一台电脑上复制的内容，立即可以在另一台电脑上粘贴。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>实时消息</h4>
+                        <p>内置聊天功能，支持实时消息传递，让您在传输文件或同步剪贴板的同时，还能与其他设备的用户进行沟通。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>智能内容检测</h4>
+                        <p>基于MD5哈希的内容检测技术，确保只传输真正变化的内容，减少网络流量和系统资源占用。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>双向连接</h4>
+                        <p>支持双向TCP连接，确保设备间通信的可靠性和稳定性，即使网络环境复杂也能保持连接。</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>优雅降级</h4>
+                        <p>当某些依赖库不可用时，仍能支持基本功能，确保工具在各种环境下都能正常运行。</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 应用场景 -->
+            <section id="scenarios">
+                <h2>应用场景</h2>
+                <div class="scenarios">
+                    <div class="scenario-item">
+                        <h4>办公室多电脑协作</h4>
+                        <p>在办公室内，您可以在台式机和笔记本电脑之间无缝切换工作，无需通过邮件或U盘传输文件，大大提高工作效率。</p>
+                    </div>
+                    <div class="scenario-item">
+                        <h4>家庭多设备共享</h4>
+                        <p>在家里，您可以在不同房间的电脑之间轻松共享照片、视频和文档，无需搭建复杂的网络共享设置。</p>
+                    </div>
+                    <div class="scenario-item">
+                        <h4>远程协助</h4>
+                        <p>当同事或家人需要帮助时，您可以通过实时消息指导他们操作，同时传输必要的文件和资料。</p>
+                    </div>
+                    <div class="scenario-item">
+                        <h4>多屏幕工作流</h4>
+                        <p>如果您使用多台电脑组成多屏幕工作环境，Interconnect Everythings 可以让您在不同屏幕之间自由复制粘贴内容，就像使用单个系统一样。</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 系统要求 -->
+            <section id="system-requirements">
+                <h2>系统要求</h2>
+                <div class="system-requirements">
+                    <h3>操作系统</h3>
+                    <ul>
+                        <li>Windows 7 SP1 及以上版本</li>
+                    </ul>
+                    
+                    <h3>硬件要求</h3>
+                    <ul>
+                        <li>1 GHz 或更快的处理器</li>
+                        <li>至少 512 MB RAM</li>
+                        <li>至少 50 MB 可用磁盘空间</li>
+                        <li>局域网连接（有线或无线）</li>
+                    </ul>
+                    
+                    <h3>软件依赖</h3>
+                    <ul>
+                        <li>Python 3.8.5 或 3.11.9（仅源代码版本需要）</li>
+                        <li>pywin32（用于高级剪贴板操作）</li>
+                        <li>Pillow（用于图像处理）</li>
+                    </ul>
+                    
+                    <!-- 连接故障排查 -->
+                    <div class="troubleshooting">
+                        <h4>连接故障排查</h4>
+                        <p>如果无法连接到其他设备，请尝试以下步骤：</p>
+                        <ul>
+                            <li>确保两台设备处于同一局域网内</li>
+                            <li>检查防火墙设置，确保允许本应用通过</li>
+                            <li>如果设备确实处于同一局域网但仍无法连接，可能是网络环境限制了设备间互访</li>
+                            <li>尝试在其中一台设备上开启移动热点功能，另一台设备连接到该热点后再尝试连接</li>
+                            <li>确保输入的连接地址和密码正确</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- 下载中心 -->
+            <section id="download">
+                <h2>下载中心</h2>
+                <div class="download-section">
+                    <p>选择适合您的版本进行下载。对于大多数用户，我们推荐使用编译好的可执行文件版本，无需安装Python环境即可运行。</p>
+                    
+                    <div class="download-buttons">
+                        <a href="#" class="download-btn">
+                            Windows 可执行文件
+                        </a>
+                        <a href="#" class="download-btn secondary">
+                            Python 源代码（不推荐）
+                        </a>
+                    </div>
+                    
+                    <div class="download-info">
+                        <p>注：下载链接将在正式发布时更新。当前为占位链接。</p>
+                        <p>源代码版本需要安装Python 3.8.5或更高版本，以及相关依赖库。</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    
+    <footer>
+        <h3>Interconnect Everythings</h3>
+        <p>一款让多设备协作更简单的工具</p>
+        <p>© 2026 Interconnect Everythings. 保留所有权利。</p>
+        <p class="copyright">版本 1.0.0</p>
+    </footer>
+</body>
+</html>
