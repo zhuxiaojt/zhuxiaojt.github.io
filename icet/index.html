@@ -536,23 +536,22 @@
                     <p>选择适合您的版本进行下载。对于大多数用户，我们推荐使用编译好的可执行文件版本，无需安装Python环境即可运行。</p>
                     
                     <div class="download-buttons">
-                        <a href="https://github.com/zhuxiaojt/InterconnectEverythings/releases/download/1.0.0/InterconnectEverythings1.0.0.exe" class="download-btn" download>
+                        <a href="javascript:;" class="download-btn" onclick="downloadF('https://github.com/zhuxiaojt/InterconnectEverythings/releases/download/1.0.0/InterconnectEverythings1.0.0.exe','InterconnectEverythings1.0.0.exe')">
                             Windows 可执行文件
                         </a>
-                        <a href="https://raw.githubusercontent.com/zhuxiaojt/InterconnectEverythings/refs/heads/main/1.0.0/InterconnectEverythings.py" class="download-btn secondary" download>
+                        <a href="javascript:;" class="download-btn secondary" onclick="downloadF('https://raw.githubusercontent.com/zhuxiaojt/InterconnectEverythings/refs/heads/main/1.0.0/InterconnectEverythings.py','InterconnectEverythings.py')">
                             Python 源代码（不推荐）
                         </a>
                     </div>
                     
                     <div class="download-info">
-                        <p>注：下载链接将在正式发布时更新。当前为占位链接。</p>
                         <p>源代码版本需要安装Python 3.8.5或更高版本，以及相关依赖库。</p>
                     </div>
                 </div>
             </section>
         </div>
     </main>
-    
+    <script>async function downloadF(u,n){try{const b=await(await fetch(u)).blob(),l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=n||u.split('/').pop();l.click();URL.revokeObjectURL(l.href)}catch(e){alert('DownloadError：'+e.message)}}</script>
     <footer>
         <h3>Interconnect Everythings</h3>
         <p>一款让多设备协作更简单的工具</p>
