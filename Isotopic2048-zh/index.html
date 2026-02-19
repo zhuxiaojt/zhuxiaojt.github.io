@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Isotopic 2048</title>
+
+  <link href="style/main.css" rel="stylesheet" type="text/css">
+  <link rel="shortcut icon" href="favicon.ico">
+  <link rel="apple-touch-icon" href="meta/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0, maximum-scale=1, user-scalable=no, minimal-ui">
+
+  <meta property="og:title" content="Isotopic 2048 游戏"/>
+  <meta property="og:site_name" content="Isotopic 2048 游戏"/>
+  <meta property="og:description" content="合并元素，获取256同位素质量的方块！"/>
+  <meta property="og:image" content="meta/og_image.png">
+</head>
+<body>
+
+  <div class="container">
+    <div class="heading">
+      <h1 class="title">Isotopic 2048</h1>
+      <div class="scores-container">
+        <div class="score-container">0</div>
+        <div class="best-container">0</div>
+      </div>
+    </div>
+    <p class="game-intro">合并元素，获取<strong>2048同位素质量</strong>的方块！不过要小心不稳定的元素，它们不会存在太久！</p>
+
+    <div class="game-container">
+      <div class="game-message">
+        <p></p>
+        <div class="lower">
+	        <a class="keep-playing-button">继续游戏</a>
+          <a class="retry-button">再试一次</a>
+          <div class="score-sharing"></div>
+        </div>
+      </div>
+
+      <div class="grid-container">
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+	  <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+	  <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+	  <div class="grid-cell"></div>
+        </div>
+	<div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+	  <div class="grid-cell"></div>
+        </div>
+      </div>
+
+      <div class="tile-container">
+
+      </div>
+    </div>
+
+    <div class="tile-counter">
+      
+    </div>
+
+    <p class="game-explanation">
+      <strong class="important">游戏玩法：</strong> 使用<strong>方向键</strong>移动方块。当两个相同数字的方块碰撞时，它们会<strong>合并成一个！</strong>
+    </p>
+    <hr>
+    <p>
+    <strong class="important">注意：</strong> 本网站是官方版本2048的修改版，官方版本可在<a href="http://gabrielecirulli.github.io/2048/">这里</a>找到。
+    </p>
+    <hr>
+    <p>
+    Isotopic 2048 基于 2048 修改。2048 由 <a href="http://gabrielecirulli.com" target="_blank">Gabriele Cirulli</a> 创建。基于 <a href="https://itunes.apple.com/us/app/1024!/id823499224" target="_blank">Veewo Studio 的 1024</a>，概念类似于 <a href="http://asherv.com/threes/" target="_blank">Asher Vollmer 的 Threes</a>。
+    </p>
+  </div>
+
+  <script src="js/animframe_polyfill.js"></script>
+  <script src="js/keyboard_input_manager.js"></script>
+  <script src="js/html_actuator.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/tile.js"></script>
+  <script src="js/local_score_manager.js"></script>
+  <script src="js/game_manager.js"></script>
+  <script src="js/application.js"></script>
+
+
+</body>
+</html>
