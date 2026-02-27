@@ -37,10 +37,14 @@
             function toggleTips(){
                 tips=[
                     "按Alt+←可以返回，按Alt+→可以前进，Ctrl+R可以刷新",
-                    "在内容前加上search:可以在 Microsoft Bing 上搜索该内容"
+                    "在内容前加上search:可以在 Microsoft Bing 上搜索该内容",
+                    "如果你觉得这个主页不错，可以把它设为浏览器默认主页",
+                    "你可以直接在地址栏输入URL访问任何网站",
+                    "这个页面的URL是 https://zhuxiaojt.github.io/newtab/ ！"
                 ]
-                document.getElementById("Tips").innerHTML = tips[tipsIndex];
+                document.getElementById("Tips").textContent = "[Tips] " + tips[tipsIndex];
                 tipsIndex = (tipsIndex + 1) % tips.length;
+                setTimeout(toggleTips, 5000);
             }
             function loadURL(url){
                 if(url.startsWith("search:")){
@@ -51,6 +55,7 @@
                 }
                 location.href = url;
             }
+            toggleTips();
         </script>
     </body>
 </html>
