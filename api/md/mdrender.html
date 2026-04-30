@@ -78,15 +78,13 @@
               return `<span class="katex-error">公式渲染失败：${mathInlines[parseInt(index)]}</span>`;
             }
           });
-
-          // 让所有链接在新标签页打开
-          markdownRender.querySelectorAll('a').forEach(link => {
-            link.setAttribute('target', '_blank');
-          });
         
-          // 插入渲染内容 + 代码高亮
+          // 插入渲染内容 + 代码高亮 + 链接在父页面打开
           markdownRender.innerHTML = htmlContent;
           document.querySelectorAll('.markdown-render pre code').forEach(block => hljs.highlightElement(block));
+          document.querySelectorAll('a').forEach(link => {
+            link.setAttribute('target', '_parent');
+          });
       }
       window.addEventListener('message', function (e) {
         let msg = e.data;
