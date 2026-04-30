@@ -78,6 +78,11 @@
               return `<span class="katex-error">公式渲染失败：${mathInlines[parseInt(index)]}</span>`;
             }
           });
+
+          // 让所有链接在新标签页打开
+          markdownRender.querySelectorAll('a').forEach(link => {
+            link.setAttribute('target', '_blank');
+          });
         
           // 插入渲染内容 + 代码高亮
           markdownRender.innerHTML = htmlContent;
