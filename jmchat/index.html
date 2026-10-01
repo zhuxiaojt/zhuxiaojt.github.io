@@ -236,7 +236,6 @@ async function connect() {
 
         connected = true;
         setStatus(`已连接 ${ip}:${port}`, 'on');
-        $('urlText').textContent = baseUrl;
 
         $('btnConnect').disabled = true;
         $('btnDisconnect').disabled = false;
@@ -262,7 +261,6 @@ function disconnect() {
     stopPolling();
 
     setStatus('未连接', 'off');
-    $('urlText').textContent = '';
     $('btnConnect').disabled = false;
     $('btnDisconnect').disabled = true;
     $('msgInput').disabled = true;
