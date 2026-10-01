@@ -87,7 +87,7 @@
         margin-right: 6px;
         vertical-align: middle;
     }
-    .dot.on { background: #000; }
+    .dot.on { background: #0a0; }
     .dot.off { background: #ccc; }
     .dot.err { background: #c00; }
 
@@ -141,6 +141,8 @@
     .inputbar input[type="text"] {
         flex: 1;
     }
+
+    .hidden { display: none !important; }
 </style>
 </head>
 <body>
@@ -148,13 +150,16 @@
 <div class="topbar">
     <span class="title">郡猫聊天</span>
 
-    <label>服务器</label>
-    <input type="text" id="serverIp" placeholder="IP" style="width:130px">
-    <label>:</label>
-    <input type="number" id="serverPort" placeholder="端口" style="width:75px">
+    <span id="connInputs">
+        <label>服务器</label>
+        <input type="text" id="serverIp" placeholder="IP" style="width:130px">
+        <label>:</label>
+        <input type="number" id="serverPort" placeholder="端口" style="width:75px">
 
-    <button id="btnConnect" onclick="connect()">连接</button>
-    <button id="btnDisconnect" onclick="disconnect()" disabled>断开</button>
+        <button id="btnConnect" onclick="connect()">连接</button>
+    </span>
+
+    <button id="btnDisconnect" onclick="disconnect()" class="hidden">断开</button>
 
     <span class="spacer"></span>
 
@@ -182,7 +187,7 @@
 let baseUrl = '';
 let connected = false;
 let pollTimer = null;
-const POLL_MS = 2000;
+const POLL_MS = 1000;
 
 function $(id) { return document.getElementById(id); }
 
@@ -235,10 +240,11 @@ async function connect() {
         }
 
         connected = true;
-        setStatus(`已连接 ${ip}:${port}`, 'on');
+        setStatus('已连接', 'on');
 
-        $('btnConnect').disabled = true;
-        $('btnDisconnect').disabled = false;
+        $('connInputs').classList.add('hidden');
+        $('btnDisconnect').classList.remove('hidden');
+
         $('msgInput').disabled = false;
         $('btnSend').disabled = false;
         $('msgInput').focus();
@@ -261,8 +267,10 @@ function disconnect() {
     stopPolling();
 
     setStatus('未连接', 'off');
-    $('btnConnect').disabled = false;
-    $('btnDisconnect').disabled = true;
+
+    $('connInputs').classList.remove('hidden');
+    $('btnDisconnect').classList.add('hidden');
+
     $('msgInput').disabled = true;
     $('btnSend').disabled = true;
     $('msgInput').value = '';
@@ -291,12 +299,10 @@ async function fetchMessages() {
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         renderMessages(data.messages || []);
+        setStatus('已连接', 'on');
     } catch (e) {
         console.error('轮询失败:', e);
-        setStatus('连接已断开', 'err');
-        clearConnection();
-        disconnect();
-        alert('与服务器失去连接');
+        setStatus('连接已断开，正在重试...', 'err');
     }
 }
 
