@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>郡猫聊天</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: -apple-system, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+        font-size: 14px;
+        background: #fff;
+        color: #000;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .topbar {
+        border-bottom: 1px solid #000;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .topbar .title {
+        font-weight: bold;
+        font-size: 15px;
+        margin-right: 10px;
+    }
+
+    .topbar .spacer {
+        flex: 1;
+    }
+
+    .topbar label { color: #333; }
+
+    input[type="text"], input[type="number"] {
+        padding: 5px 8px;
+        border: 1px solid #000;
+        background: #fff;
+        color: #000;
+        font-size: 13px;
+        font-family: inherit;
+        outline: none;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+        border-width: 2px;
+        padding: 4px 7px;
+    }
+
+    input:disabled { background: #f5f5f5; color: #999; border-color: #ccc; }
+
+    button {
+        padding: 5px 14px;
+        border: 1px solid #000;
+        background: #fff;
+        color: #000;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+    }
+
+    button:hover:not(:disabled) { background: #000; color: #fff; }
+    button:disabled { border-color: #ccc; color: #999; cursor: not-allowed; }
+
+    .statusbar {
+        padding: 6px 15px;
+        border-bottom: 1px solid #ccc;
+        background: #fafafa;
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ccc;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+    .dot.on { background: #000; }
+    .dot.off { background: #ccc; }
+    .dot.err { background: #c00; }
+
+    .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+    }
+
+    .empty {
+        text-align: center;
+        color: #999;
+        padding: 60px 20px;
+    }
+
+    .message {
+        border-left: 2px solid #000;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        background: #fff;
+    }
+
+    .message-head {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .message-user {
+        font-weight: bold;
+        color: #000;
+    }
+
+    .message-body {
+        word-wrap: break-word;
+        word-break: break-word;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+
+    .inputbar {
+        border-top: 1px solid #000;
+        padding: 10px 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .inputbar input[type="text"] {
+        flex: 1;
+    }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="title">郡猫聊天</span>
+
+    <label>服务器</label>
+    <input type="text" id="serverIp" placeholder="IP" style="width:130px">
+    <label>:</label>
+    <input type="number" id="serverPort" placeholder="端口" style="width:75px">
+
+    <button id="btnConnect" onclick="connect()">连接</button>
+    <button id="btnDisconnect" onclick="disconnect()" disabled>断开</button>
+
+    <span class="spacer"></span>
+
+    <label>用户名</label>
+    <input type="text" id="username" placeholder="昵称" style="width:110px">
+</div>
+
+<div class="statusbar">
+    <span><span class="dot off" id="statusDot"></span><span id="statusText">未连接</span></span>
+    <span id="urlText"></span>
+</div>
+
+<div class="messages" id="messages">
+    <div class="empty">请先连接到服务器</div>
+</div>
+
+<div class="inputbar">
+    <input type="text" id="msgInput" placeholder="输入消息后按回车发送..." disabled
+           onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendMessage();}">
+    <button id="btnSend" onclick="sendMessage()" disabled>发送</button>
+</div>
+
+<script>
+let baseUrl = '';
+let connected = false;
+let pollTimer = null;
+const POLL_MS = 2000;
+
+function $(id) { return document.getElementById(id); }
+
+function setStatus(text, state) {
+    $('statusText').textContent = text;
+    $('statusDot').className = 'dot ' + (state || 'off');
+}
+
+function saveConnection() {
+    try {
+        const ip = $('serverIp').value.trim();
+        const port = $('serverPort').value.trim();
+        const user = $('username').value.trim();
+        if (ip && port) {
+            localStorage.setItem('chat_active_ip', ip);
+            localStorage.setItem('chat_active_port', port);
+        }
+        if (user) {
+            localStorage.setItem('chat_active_user', user);
+        }
+    } catch (e) {}
+}
+
+function clearConnection() {
+    try {
+        localStorage.removeItem('chat_active_ip');
+        localStorage.removeItem('chat_active_port');
+        localStorage.removeItem('chat_active_user');
+    } catch (e) {}
+}
+
+async function connect() {
+    const ip = $('serverIp').value.trim();
+    const port = $('serverPort').value.trim();
+
+    if (!ip) { alert('请输入服务器 IP'); return; }
+    if (!port) { alert('请输入端口'); return; }
+
+    baseUrl = `http://${ip}:${port}`;
+    setStatus('连接中...', 'off');
+
+    try {
+        const resp = await fetch(`${baseUrl}/api/list`);
+        if (!resp.ok) {
+            throw new Error(`服务器返回 HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        if (!data || !Array.isArray(data.messages)) {
+            throw new Error('返回数据格式错误');
+        }
+
+        connected = true;
+        setStatus(`已连接 ${ip}:${port}`, 'on');
+        $('urlText').textContent = baseUrl;
+
+        $('btnConnect').disabled = true;
+        $('btnDisconnect').disabled = false;
+        $('msgInput').disabled = false;
+        $('btnSend').disabled = false;
+        $('msgInput').focus();
+
+        saveConnection();
+
+        renderMessages(data.messages);
+        startPolling();
+
+    } catch (e) {
+        console.error(e);
+        setStatus('连接失败', 'err');
+        clearConnection();
+        alert('无法连接到服务器：' + e.message);
+    }
+}
+
+function disconnect() {
+    connected = false;
+    stopPolling();
+
+    setStatus('未连接', 'off');
+    $('urlText').textContent = '';
+    $('btnConnect').disabled = false;
+    $('btnDisconnect').disabled = true;
+    $('msgInput').disabled = true;
+    $('btnSend').disabled = true;
+    $('msgInput').value = '';
+
+    $('messages').innerHTML = '<div class="empty">已断开连接</div>';
+
+    clearConnection();
+}
+
+function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(fetchMessages, POLL_MS);
+}
+
+function stopPolling() {
+    if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+}
+
+async function fetchMessages() {
+    if (!connected) return;
+    try {
+        const resp = await fetch(`${baseUrl}/api/list`);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        renderMessages(data.messages || []);
+    } catch (e) {
+        console.error('轮询失败:', e);
+        setStatus('连接已断开', 'err');
+        clearConnection();
+        disconnect();
+        alert('与服务器失去连接');
+    }
+}
+
+function renderMessages(msgs) {
+    const box = $('messages');
+
+    if (!msgs || msgs.length === 0) {
+        box.innerHTML = '<div class="empty">暂无消息</div>';
+        return;
+    }
+
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+
+    const html = msgs.map(m => {
+        return `
+            <div class="message">
+                <div class="message-head">
+                    <span class="message-user">${m.username}</span>
+                    <span>${m.time_str || ''}</span>
+                </div>
+                <div class="message-body">${m.message}</div>
+            </div>
+        `;
+    }).join('');
+
+    box.innerHTML = html;
+
+    if (atBottom) {
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+async function sendMessage() {
+    if (!connected) {
+        alert('请先连接服务器');
+        return;
+    }
+    if (!$('username').value) {
+        alert('请输入用户名');
+        return;
+    }
+
+    const input = $('msgInput');
+    const text = input.value.trim();
+    const user = $('username').value.trim();
+
+    if (!text) return;
+
+    $('btnSend').disabled = true;
+
+    try {
+        const resp = await fetch(`${baseUrl}/api/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, message: text })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            input.value = '';
+            fetchMessages();
+        } else {
+            alert('发送失败: ' + (data.error || '未知错误'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('发送失败: ' + e.message);
+    } finally {
+        $('btnSend').disabled = false;
+        input.focus();
+    }
+}
+
+(async function init() {
+    try {
+        const savedIp = localStorage.getItem('chat_ip');
+        const savedPort = localStorage.getItem('chat_port');
+        const savedUser = localStorage.getItem('chat_user');
+        if (savedIp) $('serverIp').value = savedIp;
+        if (savedPort) $('serverPort').value = savedPort;
+        if (savedUser) $('username').value = savedUser;
+    } catch (e) {}
+
+    $('serverIp').addEventListener('change', e => {
+        try { localStorage.setItem('chat_ip', e.target.value); } catch (_) {}
+    });
+    $('serverPort').addEventListener('change', e => {
+        try { localStorage.setItem('chat_port', e.target.value); } catch (_) {}
+    });
+    $('username').addEventListener('change', e => {
+        try { localStorage.setItem('chat_user', e.target.value); } catch (_) {}
+    });
+
+    try {
+        const params = new URLSearchParams(location.search);
+        if (params.get('ip')) $('serverIp').value = params.get('ip');
+        if (params.get('port')) $('serverPort').value = params.get('port');
+    } catch (e) {}
+
+    window.addEventListener('beforeunload', stopPolling);
+
+    try {
+        const activeIp = localStorage.getItem('chat_active_ip');
+        const activePort = localStorage.getItem('chat_active_port');
+        const activeUser = localStorage.getItem('chat_active_user');
+        if (activeIp) $('serverIp').value = activeIp;
+        if (activePort) $('serverPort').value = activePort;
+        if (activeUser) $('username').value = activeUser;
+
+        if (activeIp && activePort) {
+            await connect();
+        }
+    } catch (e) {}
+})();
+</script>
+</body>
+</html>
